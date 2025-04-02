@@ -3,14 +3,17 @@ package udp;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.StringTokenizer;
 
 public class Node {
-    // ..
     private final Config config;
-    MembershipService membershipService;
-    private int port;
-    //private TasksApp tasksApp;
+    private final int port;
+    private MembershipService membershipService;
+    private volatile boolean running = true;
+    private DatagramSocket serverSocket;
+    private final TasksApp tasksApp = new TasksApp();
 
     public Node(Config config, int port) {
         this.config = config;
@@ -20,61 +23,85 @@ public class Node {
     public void start() {
         this.membershipService = new MembershipService(port);
         membershipService.join(config.getSeedAddress());
-
         startService();
     }
 
     public void startService() {
         new Thread(() -> {
-            TasksApp tasksApp = new TasksApp();
-            System.out.println("Node iniciando na porta " + port);
-            //this.membershipService = new MembershipService(getListenAddress());
-            //membershipService.join(config.getSeedAddress());
             try {
-                //membershipService.join(config.getSeedAddress());
-                DatagramSocket serverSocket = new DatagramSocket(port);
-                String operationMsg;
-                while(true){
-                    byte[] receiveMessage = new byte[1024];
-                    DatagramPacket receivePacket = new DatagramPacket(receiveMessage, receiveMessage.length);
+                serverSocket = new DatagramSocket(port);
+                System.out.println("[Node " + port + "] Serviço iniciado");
+
+                while (running) {
+                    byte[] receiveBuffer = new byte[1024];
+                    DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
                     serverSocket.receive(receivePacket);
                     String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                    System.out.println("[Node " + port + "]" + "Received from client: " + message+ "\nFrom: " + receivePacket.getAddress());
-                    operationMsg = message;
 
-                    StringTokenizer tokenizer = new StringTokenizer(message, ";");
-                    String operation = null;
-                    String params = null;
-                    while (tokenizer.hasMoreElements()){
-                        operation = tokenizer.nextToken();
-                        params = tokenizer.nextToken();
-                    }
+                    System.out.println("[Node " + port + "] Mensagem recebida: " + message);
 
-                    switch (operation) {
-                        case "add":
-                            tasksApp.addTask(params);
-                            break;
-                        case "read":
-                            tasksApp.getTasks();
-                            break;
-                    }
+                    String response = processMessage(message);
+                    sendResponse(response, receivePacket.getAddress(), receivePacket.getPort());
+                }
+            } catch (SocketException e) {
+                if (running) {
+                    System.out.println("[Node " + port + "] Erro no socket: " + e.getMessage());
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                System.out.println("Node terminando");
+                System.out.println("[Node " + port + "] Erro de IO: " + e.getMessage());
+            } finally {
+                if (serverSocket != null) {
+                    serverSocket.close();
+                }
+                System.out.println("[Node " + port + "] Serviço encerrado");
             }
         }).start();
-
     }
 
+    private String processMessage(String message) {
+        try {
+            StringTokenizer tokenizer = new StringTokenizer(message, ";");
+            String operation = tokenizer.nextToken();
+            String params = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
 
-//    public static void main(String[] args) {
-//
-//        if (args.length < 1) {
-//            System.out.println("Uso: java Node <porta>");
-//            return;
+            switch (operation) {
+                case "add":
+                    if (params.isEmpty()) {
+                        return "Erro: Nenhuma tarefa especificada";
+                    }
+                    tasksApp.addTask(params);
+                    return "Tarefa adicionada: " + params;
+
+                case "read":
+                    return tasksApp.getTasks();
+
+                default:
+                    return "Erro: Operação inválida - " + operation;
+            }
+        } catch (Exception e) {
+            return "Erro: " + e.getMessage();
+        }
+    }
+
+    private void sendResponse(String response, InetAddress address, int port) {
+        try {
+            byte[] responseData = response.getBytes();
+            DatagramPacket responsePacket = new DatagramPacket(
+                    responseData, responseData.length, address, port);
+            serverSocket.send(responsePacket);
+            System.out.println("[Node " + this.port + "] Resposta enviada: " + response);
+        } catch (IOException e) {
+            System.out.println("[Node " + this.port + "] Erro ao enviar resposta: " + e.getMessage());
+        }
+    }
+
+//    public void stop() {
+//        running = false;
+//        if (serverSocket != null) {
+//            serverSocket.close();
 //        }
-//        int port = Integer.parseInt(args[0]);
-//        new Node(port).start();
+//        if (membershipService != null) {
+//            membershipService.leave();
+//        }
 //    }
 }
