@@ -22,7 +22,7 @@ public class Node {
 
     public void start() {
         this.membershipService = new MembershipService(port);
-        membershipService.join(config.getSeedAddress());
+        membershipService.join(config.getSeedAddress(), config);
         startService();
     }
 
@@ -33,6 +33,7 @@ public class Node {
                 System.out.println("[Node " + port + "] Serviço iniciado");
 
                 while (running) {
+                    System.out.println("Up nodes node: " + config.getUpNodes());
                     byte[] receiveBuffer = new byte[1024];
                     DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
                     serverSocket.receive(receivePacket);
@@ -56,6 +57,15 @@ public class Node {
                 System.out.println("[Node " + port + "] Serviço encerrado");
             }
         }).start();
+
+//        new Thread(() -> {
+//            while (true){
+//                if (config.getSeedAddress() == port) {
+//                    System.out.println(membershipService.membership.liveMembers);
+//                }
+//            }
+//
+//        }).start();
     }
 
     private String processMessage(String message) {
@@ -74,7 +84,27 @@ public class Node {
 
                 case "read":
                     return tasksApp.getTasks();
-
+                case "join_request":
+                    // se for seed
+                    if (port == config.getSeedAddress()){
+                        System.out.println("É seed, processar pedido");
+                        int newNodeAddress = Integer.parseInt(params);
+                        System.out.println("Processando join request de: " + newNodeAddress);
+                        membershipService.handleNewJoin(newNodeAddress, config);
+                        config.setUpNodes(membershipService.membership.getUpNodesAddress());
+                        String response = "accepted; ";
+                        InetAddress inetAddress = InetAddress.getByName("localhost");
+                        try (DatagramSocket socket = new DatagramSocket()) {
+                            byte[] responseData = response.getBytes();
+                            DatagramPacket responsePacket = new DatagramPacket(
+                                    responseData, responseData.length,
+                                    inetAddress, newNodeAddress);
+                            socket.send(responsePacket);
+                        }
+                        return "Novo membro adicionado: " + newNodeAddress;
+                    } else {
+                        System.out.println("Apenas seed pode processar pedidos de join");
+                    }
                 default:
                     return "Erro: Operação inválida - " + operation;
             }

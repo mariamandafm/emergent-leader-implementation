@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.List;
+import java.util.Random;
 import java.util.StringTokenizer;
 
 import java.io.IOException;
@@ -27,6 +29,7 @@ public class Gateway {
                 System.out.println("Gateway iniciado na porta " + PORT);
 
                 while (running) {
+                    System.out.println("Up nodes gat: " + config.getUpNodes());
                     byte[] receiveBuffer = new byte[1024];
                     DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
                     serverSocket.receive(receivePacket);
@@ -65,17 +68,17 @@ public class Gateway {
     private String forwardToNodeAndGetResponse(String operation, String originalMessage) throws IOException {
         try (DatagramSocket clientSocket = new DatagramSocket()) {
             InetAddress nodeAddress = InetAddress.getByName("localhost");
-            int nodePort;
+            List<Integer> allNodes = config.getUpNodes();
 
-            if ("add".equals(operation)) {
-                nodePort = config.getSeedAddress();
-                System.out.println("[Gateway] Encaminhando requisição de escrita para o líder na porta " + nodePort);
-            } else if ("read".equals(operation)) {
-                nodePort = 9002;
-                System.out.println("[Gateway] Encaminhando requisição de leitura para node na porta " + nodePort);
-            } else {
-                return "Operação inválida";
+            if (allNodes.isEmpty()) {
+                return "Erro: Nenhum node disponível";
             }
+
+            Random rand = new Random();
+            int nodePort = allNodes.get(rand.nextInt(allNodes.size()));
+
+            System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
+                    operation, nodePort);
 
             byte[] sendBuffer = originalMessage.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(

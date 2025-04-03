@@ -1,5 +1,8 @@
 package udp;
 
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,12 +16,12 @@ public class MembershipService {
         this.membership = new Membership(0, new ArrayList<>());
     }
 
-    public void join(int seedAddress){
+    public void join(int seedAddress, Config config){
         var maxJoinAttempts = 5;
 
         for(int i = 0; i < maxJoinAttempts; i++){
             try {
-                joinAttempt(seedAddress);
+                joinAttempt(seedAddress, config);
                 return;
             } catch (Exception e) {
                 //logger.info("Join attempt " + i + "from " + selfAddress + " to" + seedAddress + " failed. Retrying");
@@ -28,14 +31,14 @@ public class MembershipService {
         //throw new JoinFailedException("Unable to join the cluster after " + maxJoinAttempts + " attempts");
     }
 
-    private void joinAttempt(int seedAddress){
+    private void joinAttempt(int seedAddress, Config config){
         // É o seed node. Idade 1.
         if (selfAddress == seedAddress) {
             System.out.println("Entrando como seed");
             int membershipVersion = 1;
             int age = 1;
             updateMembership(new Membership(membershipVersion, Arrays.asList(new Member(selfAddress, age))));
-
+            config.setUpNodes(membership.getUpNodesAddress());
             start();
             return;
         }
@@ -47,13 +50,35 @@ public class MembershipService {
         //var message = new JoinRequest(id, selfAddress);
         // pendingRequests.put(id, future);
         // Pedido enviado para o seed
+        try {
+            System.out.println("Enviando join request pro seed");
+            DatagramSocket clientSocket = new DatagramSocket();
+            InetAddress inetAddress = InetAddress.getByName("localhost");
+            byte[] sendMessage;
+            byte[] receivemessage = new byte[1024];
+            String message = "join_request;" + selfAddress;
+            sendMessage = message.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(
+                    sendMessage, sendMessage.length,
+                    inetAddress, seedAddress);
+            clientSocket.send(sendPacket);
+
+            DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
+            clientSocket.receive(receivepacket);
+            message = new String(receivepacket.getData());
+            System.out.println(message);
+
+        } catch (Exception e) {
+            System.out.println("[Node " + seedAddress + "] Erro ao pedir para entrar no cluster");
+        }
+
 //        network.send(seedAddress, message);
 
         //var joinResponse = Uninterruptibles.getUninterruptibly(future, 5, TimeUnit.SECONDS);
         // De acordo com resposta atualiza membership
         //int membershipVersion = membership.version;
         //int age = membership.liveMembers.size();
-        handleNewJoin(selfAddress);
+        //handleNewJoin(selfAddress);
         //updateMembership(this.membership);
         start();
     }
@@ -70,10 +95,12 @@ public class MembershipService {
 //        handleNewJoin(joinRequest);
 //    }
 
-    private void handleNewJoin(int selfAddress) {
+    public void handleNewJoin(int joinAddress, Config config) {
         List<Member> existingMembers = membership.getLiveMembers();
-        updateMembership(membership.addNewMember(selfAddress));
-        System.out.println(this.membership);
+        updateMembership(membership.addNewMember(joinAddress));
+        System.out.println("Membros: " + this.membership.liveMembers);
+
+        config.setUpNodes(membership.getUpNodesAddress());
         //var resultsCollector = broadcastMembershipUpdate(existingMembers);
         //var joinResponse = new JoinResponse(joinRequest.messageId, selfAddress, membership);
 
@@ -85,6 +112,9 @@ public class MembershipService {
     }
 
     private void updateMembership(Membership membership) {
+        System.out.println("Atualizando membership");
+        System.out.println(membership.version);
+        System.out.println(membership.liveMembers);
         this.membership = membership;
     }
 }

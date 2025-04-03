@@ -2,6 +2,7 @@ package udp;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Membership {
     int seedAddress = 0;
@@ -9,7 +10,10 @@ public class Membership {
     List<Member> failedMembers = new ArrayList<>();
     int version;
 
-    public <T> Membership(int version, List<Member> liveMembers) {
+    public Membership(int version, List<Member> liveMembers) {
+        this.version = version;
+        this.liveMembers = new ArrayList<>(liveMembers); // Defensivo copy
+        this.failedMembers = new ArrayList<>();
     }
 
     public Membership addNewMember (int address) {
@@ -20,7 +24,7 @@ public class Membership {
     }
 
     private int yougestMemberAge() {
-        return liveMembers.stream().map(m -> m.getAge()).max(Integer::compare).orElse(0);
+        return liveMembers.stream().map(m -> m.getAge()).min(Integer::compare).orElse(0);
     }
 
     public List<Member> getLiveMembers() {
@@ -29,5 +33,9 @@ public class Membership {
 
     public int getSeedAddress() {
         return seedAddress;
+    }
+
+    public List<Integer> getUpNodesAddress(){
+        return liveMembers.stream().map(Member::getPort).collect(Collectors.toList());
     }
 }
