@@ -38,4 +38,8 @@ public class Membership {
     public List<Integer> getUpNodesAddress(){
         return liveMembers.stream().map(Member::getPort).collect(Collectors.toList());
     }
+
+    public boolean contains(int address) {
+        return liveMembers.stream().anyMatch(m -> m.getPort() == address);
+    }
 }
