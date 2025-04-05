@@ -64,15 +64,6 @@ public class Node {
                 System.out.println("[Node " + port + "] Serviço encerrado");
             }
         }).start();
-
-//        new Thread(() -> {
-//            while (true){
-//                if (config.getSeedAddress() == port) {
-//                    System.out.println(membershipService.membership.liveMembers);
-//                }
-//            }
-//
-//        }).start();
     }
 
     private String processMessage(String message) {
@@ -98,13 +89,16 @@ public class Node {
                         System.out.println("Processando join request de: " + newNodeAddress);
                         membershipService.handleNewJoin(newNodeAddress, config);
                         config.setUpNodes(membershipService.membership.getUpNodesAddress());
-
-                        return "accepted;" + newNodeAddress;
+                        String updatedMembership = membershipService.membership.getSerializedMembership();
+                        return "accepted;" + updatedMembership;
                     } else {
                         System.out.println("Apenas seed pode processar pedidos de join");
                     }
-                case "join_update":
-                    System.out.println("[ " + port + " ] Recebendo artualização de join");
+                case "membership_update":
+                    System.out.println("[ " + port + " ] Recebendo artualização de join #######");
+                    String version = tokenizer.nextToken();
+                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
+                    System.out.println(membershipService.membership.getLiveMembers());
                     return "ack;";
                 default:
                     return "Erro: Operação inválida - " + operation;

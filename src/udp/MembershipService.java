@@ -55,12 +55,13 @@ public class MembershipService {
             DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
             socket.receive(receivepacket);
             String responseMessage = new String(receivepacket.getData(), 0, receivepacket.getLength());
-            //clientSocket.close();
-            // Processa resposta
-            StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
-            String response = tokenizer.nextToken();
 
-            return response;
+            StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
+            String responseStatus = tokenizer.nextToken();
+            String responseMembership = tokenizer.nextToken();
+            String responseMembershipVersion = tokenizer.nextToken();
+            membership.deserializeMembershipAndUpdate(responseMembership, responseMembershipVersion);
+            return responseStatus;
         } catch (Exception e) {
             System.out.println("[Node " + seedAddress + "] Could not join cluster");
         }
@@ -97,27 +98,23 @@ public class MembershipService {
             System.out.println("Node " + joinAddress + " já está no cluster. Ignorando.");
             return;
         }
+        updateMembership(membership.addNewMember(joinAddress));
         List<Member> existingMembers = membership.getLiveMembers();
 
-//        System.out.println("Membros: " + this.membership.liveMembers);
         System.out.println("[ " + selfAddress + " ] Enviando broadcast de join request");
         config.setUpNodes(membership.getUpNodesAddress());
         // Envia uma cópia da lista de nodes ativos
         List<Integer> members = new ArrayList<>(membership.getUpNodesAddress());
-
-        if (broadcastMembershipUpdate(members, joinAddress)) {
-            updateMembership(membership.addNewMember(joinAddress));
-        }
-        // Quando recebe todas as acks dos membros envia uma resposta para o node que está querendo entrar
-
+        broadcastMembershipUpdate(members, joinAddress);
     }
 
     // Seed node envia uma mensagem para todos os nodes quando um novo membro entra no cluster
     // Os nodes envian um ack para confirmar o recebimento.
     private boolean broadcastMembershipUpdate(List<Integer> existingMembers, int joinAddress) {
 
-        //remove o seed, pois é ele quem está enviando.
+        //remove o seed e o novo node, pois eles não precisam receber o novo
         existingMembers.remove(Integer.valueOf(selfAddress));
+        existingMembers.remove(Integer.valueOf(joinAddress));
         var members = existingMembers.size();
         if (members == 0){
             System.out.println("Only seed in the cluster, no need for broacast");
@@ -158,11 +155,11 @@ public class MembershipService {
     }
 
     private void sendJoinUpdate(int memberAddress) {
+        String membershipMessage = membership.getSerializedMembership();
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
             byte[] sendMessage;
-
-            String message = "join_update;" + selfAddress;
+            String message = "membership_update;" + membershipMessage;
             sendMessage = message.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(
                     sendMessage, sendMessage.length,
@@ -171,7 +168,6 @@ public class MembershipService {
         } catch (Exception e){
             System.out.println("Could not send membership update");
         }
-
     }
 
     private void updateMembership(Membership membership) {
