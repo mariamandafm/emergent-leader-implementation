@@ -103,6 +103,9 @@ public class Node {
                     } else {
                         System.out.println("Apenas seed pode processar pedidos de join");
                     }
+                case "join_update":
+                    System.out.println("[ " + port + " ] Recebendo artualização de join");
+                    return "ack;";
                 default:
                     return "Erro: Operação inválida - " + operation;
             }

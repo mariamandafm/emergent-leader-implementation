@@ -3,10 +3,7 @@ package udp;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.StringTokenizer;
+import java.util.*;
 
 public class MembershipService {
     int selfAddress;
@@ -17,7 +14,6 @@ public class MembershipService {
         this.selfAddress = selfAddress;
         this.membership = new Membership(0, new ArrayList<>());
         this.socket = socket;
-
     }
 
     public boolean join(int seedAddress, Config config){
@@ -54,7 +50,7 @@ public class MembershipService {
             //DatagramSocket clientSocket = new DatagramSocket();
             byte[] receivemessage = new byte[1024];
             // Envia join request para o seed
-            sendJoinRequest(socket, seedAddress);
+            sendJoinRequest(seedAddress);
             // Espera resposta do seed
             DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
             socket.receive(receivepacket);
@@ -71,7 +67,7 @@ public class MembershipService {
         return "Erro";
     }
 
-    private void sendJoinRequest(DatagramSocket clientSocket, int seedAddress) {
+    private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
             byte[] sendMessage;
@@ -81,20 +77,16 @@ public class MembershipService {
             DatagramPacket sendPacket = new DatagramPacket(
                     sendMessage, sendMessage.length,
                     inetAddress, seedAddress);
-            clientSocket.send(sendPacket);
+            socket.send(sendPacket);
         } catch (Exception e){
             System.out.println("[Node " + seedAddress + "] Could not send join request.");
         }
-
-    }
-
-    private void sendJoinUpdate(DatagramSocket clientSocket, int seedAddress) {
-        // ...
     }
 
     private void start() {
         System.out.println(selfAddress + " joined the cluster. Membership=" + membership.getLiveMembers());
     }
+
 //    public void handleJoinRequest(JoinRequest joinRequest) {
 //        //handlePossibleRejoin(joinRequest);
 //        handleNewJoin(joinRequest);
@@ -106,34 +98,81 @@ public class MembershipService {
             return;
         }
         List<Member> existingMembers = membership.getLiveMembers();
-        updateMembership(membership.addNewMember(joinAddress));
+
 //        System.out.println("Membros: " + this.membership.liveMembers);
-
+        System.out.println("[ " + selfAddress + " ] Enviando broadcast de join request");
         config.setUpNodes(membership.getUpNodesAddress());
-        broadcastMembershipUpdate(membership.getUpNodesAddress());
-        //var resultsCollector = broadcastMembershipUpdate(existingMembers);
-        //var joinResponse = new JoinResponse(joinRequest.messageId, selfAddress, membership);
+        // Envia uma cópia da lista de nodes ativos
+        List<Integer> members = new ArrayList<>(membership.getUpNodesAddress());
 
+        if (broadcastMembershipUpdate(members, joinAddress)) {
+            updateMembership(membership.addNewMember(joinAddress));
+        }
         // Quando recebe todas as acks dos membros envia uma resposta para o node que está querendo entrar
-        //var resultsCollector.whenComplete((response, exception) -> {
-        //    System.out.println("Sending join response from " + selfAddress + " to " + joinRequest.from);
-        //    network.send(joinRequest.from, joinResponse);
-        //});
+
     }
 
     // Seed node envia uma mensagem para todos os nodes quando um novo membro entra no cluster
     // Os nodes envian um ack para confirmar o recebimento.
-    private void broadcastMembershipUpdate(List<Integer> existingMembers){
-        //...
+    private boolean broadcastMembershipUpdate(List<Integer> existingMembers, int joinAddress) {
+
+        //remove o seed, pois é ele quem está enviando.
+        existingMembers.remove(Integer.valueOf(selfAddress));
         var members = existingMembers.size();
-        var collector = 0;
+        if (members == 0){
+            System.out.println("Only seed in the cluster, no need for broacast");
+            return true;
+        } else {
+            var collector = 0;
+            var acks = 0;
+            System.out.println("Membros existentes");
+            for (Integer member : existingMembers){
+                sendJoinUpdate(member);
+            }
+            while (collector < members){
+                try{
+                    byte[] receivemessage = new byte[1024];
+                    DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
+                    socket.receive(receivepacket);
 
-        for (Integer member : existingMembers){
+                    String responseMessage = new String(receivepacket.getData(), 0, receivepacket.getLength());
+                    StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
+                    String response = tokenizer.nextToken();
+                    collector++;
+                    if (Objects.equals(response, "ack")) {
+                        acks++;
+                    }
 
+                } catch (Exception e) {
+                    System.out.println("Could not receive update response from nodes");
+                }
+            }
+
+            if (acks == members) {
+                System.out.println("Ack received from all members");
+                return true;
+            }
         }
+
+        return false;
     }
 
+    private void sendJoinUpdate(int memberAddress) {
+        try{
+            InetAddress inetAddress = InetAddress.getByName("localhost");
+            byte[] sendMessage;
 
+            String message = "join_update;" + selfAddress;
+            sendMessage = message.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(
+                    sendMessage, sendMessage.length,
+                    inetAddress, memberAddress);
+            socket.send(sendPacket);
+        } catch (Exception e){
+            System.out.println("Could not send membership update");
+        }
+
+    }
 
     private void updateMembership(Membership membership) {
         System.out.println("Atualizando membership");
