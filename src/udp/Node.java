@@ -21,7 +21,12 @@ public class Node {
     }
 
     public void start() {
-        this.membershipService = new MembershipService(port);
+        try {
+            serverSocket = new DatagramSocket(port);
+        } catch (Exception e) {
+            System.out.println("Could not start node");
+        }
+        this.membershipService = new MembershipService(port, serverSocket);
         if (membershipService.join(config.getSeedAddress(), config)){
             startService();
         } else {
@@ -32,7 +37,6 @@ public class Node {
     public void startService() {
         new Thread(() -> {
             try {
-                serverSocket = new DatagramSocket(port);
                 System.out.println("[Node " + port + "] Serviço iniciado");
 
                 while (running) {

@@ -11,10 +11,13 @@ import java.util.StringTokenizer;
 public class MembershipService {
     int selfAddress;
     Membership membership;
+    DatagramSocket socket;
 
-    public MembershipService(int selfAddress) {
+    public MembershipService(int selfAddress, DatagramSocket socket) {
         this.selfAddress = selfAddress;
         this.membership = new Membership(0, new ArrayList<>());
+        this.socket = socket;
+
     }
 
     public boolean join(int seedAddress, Config config){
@@ -48,17 +51,19 @@ public class MembershipService {
         }
         try {
             System.out.println("Enviando join request pro seed");
-            DatagramSocket clientSocket = new DatagramSocket();
+            //DatagramSocket clientSocket = new DatagramSocket();
             byte[] receivemessage = new byte[1024];
             // Envia join request para o seed
-            sendJoinRequest(clientSocket, seedAddress);
+            sendJoinRequest(socket, seedAddress);
             // Espera resposta do seed
             DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
-            clientSocket.receive(receivepacket);
+            socket.receive(receivepacket);
             String responseMessage = new String(receivepacket.getData(), 0, receivepacket.getLength());
+            //clientSocket.close();
             // Processa resposta
             StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
             String response = tokenizer.nextToken();
+
             return response;
         } catch (Exception e) {
             System.out.println("[Node " + seedAddress + "] Could not join cluster");
@@ -83,6 +88,10 @@ public class MembershipService {
 
     }
 
+    private void sendJoinUpdate(DatagramSocket clientSocket, int seedAddress) {
+        // ...
+    }
+
     private void start() {
         System.out.println(selfAddress + " joined the cluster. Membership=" + membership.getLiveMembers());
     }
@@ -101,6 +110,7 @@ public class MembershipService {
 //        System.out.println("Membros: " + this.membership.liveMembers);
 
         config.setUpNodes(membership.getUpNodesAddress());
+        broadcastMembershipUpdate(membership.getUpNodesAddress());
         //var resultsCollector = broadcastMembershipUpdate(existingMembers);
         //var joinResponse = new JoinResponse(joinRequest.messageId, selfAddress, membership);
 
@@ -113,11 +123,16 @@ public class MembershipService {
 
     // Seed node envia uma mensagem para todos os nodes quando um novo membro entra no cluster
     // Os nodes envian um ack para confirmar o recebimento.
-    private void broadcastMembershipUpdate(List<Member> existingMembers){
-        //var resultsCollector = sendMembershipUpdateTo(existingMembers);
-        //resultsCollector.orTimeout(2, TimeUnit.SECONDS);
-       // return resultsCollector;
+    private void broadcastMembershipUpdate(List<Integer> existingMembers){
+        //...
+        var members = existingMembers.size();
+        var collector = 0;
+
+        for (Integer member : existingMembers){
+
+        }
     }
+
 
 
     private void updateMembership(Membership membership) {
