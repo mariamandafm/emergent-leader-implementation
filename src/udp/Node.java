@@ -33,6 +33,7 @@ public class Node {
         this.membershipService = new MembershipService(port, serverSocket);
         if (membershipService.join(config.getSeedAddress(), config)){
             startService();
+            sendHeartbeats();
         } else {
             System.out.println("Não foi possivel se juntar ao cluster");
         }
@@ -51,6 +52,12 @@ public class Node {
                     String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
 
                     System.out.println("[Node " + port + "] Mensagem recebida: " + message);
+
+                    // Evitar tratar ack como requisição
+                    if (message.trim().startsWith("ack")) {
+                        System.out.println("[Node " + port + "] ACK recebido como resposta. Ignorado.");
+                        continue;
+                    }
 
                     String response = processMessage(message);
                     sendResponse(response, receivePacket.getAddress(), receivePacket.getPort());
@@ -104,6 +111,10 @@ public class Node {
                     membershipService.membership.deserializeMembershipAndUpdate(params, version);
                     System.out.println(membershipService.membership.getLiveMembers());
                     return "ack;";
+                case "heartbeat":
+                    int senderPort = Integer.parseInt(params);
+                    membershipService.receiveHeartbeat(senderPort);
+                    return "";
                 default:
                     return "Erro: Operação inválida - " + operation;
             }
@@ -113,6 +124,8 @@ public class Node {
     }
 
     private void sendResponse(String response, InetAddress address, int port) {
+        if (response == null || response.trim().isEmpty()) return; // <-- ignora respostas vazias
+
         try {
             byte[] responseData = response.getBytes();
             DatagramPacket responsePacket = new DatagramPacket(
@@ -123,6 +136,35 @@ public class Node {
             System.out.println("[Node " + this.port + "] Erro ao enviar resposta: " + e.getMessage());
         }
     }
+
+
+    private void sendHeartbeats() {
+        new Thread(() -> {
+            while (running) {
+                for (Integer nodePort : config.getUpNodes()) {
+                    if (nodePort == port) continue;
+
+                    try {
+                        String message = "heartbeat;" + port;
+                        byte[] data = message.getBytes();
+                        DatagramPacket packet = new DatagramPacket(
+                                data, data.length, InetAddress.getByName("localhost"), nodePort);
+                        serverSocket.send(packet);
+
+                    } catch (Exception e) {
+                        System.out.println("[Node " + port + "] Erro ao enviar heartbeat: " + e.getMessage());
+                    }
+                }
+
+                try {
+                    Thread.sleep(6000); // envia heartbeat a cada 3s
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+    }
+
 
     public void stop() {
         running = false;

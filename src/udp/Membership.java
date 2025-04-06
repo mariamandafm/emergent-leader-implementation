@@ -65,4 +65,5 @@ public class Membership {
         this.liveMembers = members;
         this.version = Integer.parseInt(version);
     }
+
 }

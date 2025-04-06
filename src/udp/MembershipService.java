@@ -4,11 +4,14 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MembershipService {
     int selfAddress;
     Membership membership;
     DatagramSocket socket;
+    private Map<Integer, Long> lastHeartbeat = new ConcurrentHashMap<>();
+
 
     public MembershipService(int selfAddress, DatagramSocket socket) {
         this.selfAddress = selfAddress;
@@ -23,6 +26,7 @@ public class MembershipService {
             try {
                 String joinResult = joinAttempt(seedAddress, config);
                 if (joinResult.equals("accepted")) {
+                    start(config);
                     return true;
                 }
             } catch (Exception e) {
@@ -42,7 +46,7 @@ public class MembershipService {
             updateMembership(new Membership(membershipVersion, Arrays.asList(new Member(selfAddress, age))));
             config.setUpNodes(membership.getUpNodesAddress());
 
-            start();
+            start(config);
             return "accepted";
         }
         try {
@@ -84,7 +88,8 @@ public class MembershipService {
         }
     }
 
-    private void start() {
+    private void start(Config config) {
+        startFailureDetector(config);
         System.out.println(selfAddress + " joined the cluster. Membership=" + membership.getLiveMembers());
     }
 
@@ -175,5 +180,28 @@ public class MembershipService {
         System.out.println(membership.version);
         System.out.println(membership.liveMembers);
         this.membership = membership;
+    }
+
+    public void receiveHeartbeat(int port) {
+        lastHeartbeat.put(port, System.currentTimeMillis());
+        System.out.println(lastHeartbeat);
+    }
+
+    private void startFailureDetector(Config config) {
+        new Thread(() -> {
+            while (true) {
+                long now = System.currentTimeMillis();
+                for (Integer nodePort : new HashSet<>(lastHeartbeat.keySet())) {
+                    if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 20000) {
+                        System.out.println("[FailureDetector] Node " + nodePort + " não respondeu. Removendo do cluster.");
+                        config.getUpNodes().remove((Integer) nodePort);
+                        lastHeartbeat.remove(nodePort);
+                    }
+                }
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ignored) {}
+            }
+        }).start();
     }
 }
