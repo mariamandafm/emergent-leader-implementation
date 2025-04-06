@@ -1,15 +1,16 @@
 package udp;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Config {
     int seedAddress;
     private List<Integer> upNodes = new ArrayList<>();
-
+    private Map<Integer, Node> nodes = new HashMap<>();
     public Config(int seedAddress) {
         this.seedAddress = seedAddress;
-
     }
 
     public int getSeedAddress() {
@@ -31,4 +32,17 @@ public class Config {
     public List<Integer> getUpNodes() {
         return upNodes;
     }
+
+    public void addNode(Node node) {
+        nodes.put(node.getPort(), node);
+    }
+
+    public Node removeNode(int port){
+        return nodes.remove(port);
+    }
+
+    public Map<Integer, Node> getNodes() {
+        return nodes;
+    }
+
 }

@@ -20,6 +20,10 @@ public class Node {
         this.port = port;
     }
 
+    public int getPort() {
+        return port;
+    }
+
     public void start() {
         try {
             serverSocket = new DatagramSocket(port);
@@ -120,13 +124,11 @@ public class Node {
         }
     }
 
-//    public void stop() {
-//        running = false;
-//        if (serverSocket != null) {
-//            serverSocket.close();
-//        }
-//        if (membershipService != null) {
-//            membershipService.leave();
-//        }
-//    }
+    public void stop() {
+        running = false;
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
+        System.out.println("[Node " + port + "] Encerrado.");
+    }
 }
