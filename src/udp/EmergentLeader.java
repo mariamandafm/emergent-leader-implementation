@@ -16,6 +16,12 @@ public class EmergentLeader {
         Node node1 = new Node(config, 9001);
         node1.start();
         nodes.put(9001, node1);
+        Node node2 = new Node(config, 9002);
+        node2.start();
+        nodes.put(9002, node2);
+        Node node3 = new Node(config, 9003);
+        node3.start();
+        nodes.put(9003, node3);
         //config.addNode(node1);
 
         Scanner scanner = new Scanner(System.in);

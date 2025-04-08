@@ -1,7 +1,9 @@
 package udp;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Membership {
@@ -23,8 +25,21 @@ public class Membership {
         return new Membership(version + 1, newMembership);
     }
 
+    public Membership removeMember(int address) {
+        var newMembership = new ArrayList<>(liveMembers);
+        newMembership.removeIf(member -> member.getPort() == address);
+        return new Membership(version + 1, newMembership);
+    }
+
     private int oldestMemberAge() {
         return liveMembers.stream().map(m -> m.getAge()).max(Integer::compare).orElse(0);
+    }
+
+    public Optional<Member> getSecondOldestMember() {
+        return liveMembers.stream()
+                .sorted(Comparator.comparingInt(Member::getAge).reversed())
+                .skip(1) // Pula o mais velho
+                .findFirst();
     }
 
     public List<Member> getLiveMembers() {

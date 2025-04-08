@@ -141,20 +141,35 @@ public class Node {
     private void sendHeartbeats() {
         new Thread(() -> {
             while (running) {
-                for (Integer nodePort : config.getUpNodes()) {
-                    if (nodePort == port) continue;
+                // Se forr seed envia heartbeat para todos os nodes
+                if (port == config.getSeedAddress()){
+                    for (Integer nodePort : config.getUpNodes()) {
+                        if (nodePort == port) continue;
 
+                        try {
+                            String message = "heartbeat;" + port;
+                            byte[] data = message.getBytes();
+                            DatagramPacket packet = new DatagramPacket(
+                                    data, data.length, InetAddress.getByName("localhost"), nodePort);
+                            serverSocket.send(packet);
+
+                        } catch (Exception e) {
+                            System.out.println("[Node " + port + "] Erro ao enviar heartbeat: " + e.getMessage());
+                        }
+                    }
+                } else {
                     try {
                         String message = "heartbeat;" + port;
                         byte[] data = message.getBytes();
                         DatagramPacket packet = new DatagramPacket(
-                                data, data.length, InetAddress.getByName("localhost"), nodePort);
+                                data, data.length, InetAddress.getByName("localhost"), config.getSeedAddress());
                         serverSocket.send(packet);
 
                     } catch (Exception e) {
                         System.out.println("[Node " + port + "] Erro ao enviar heartbeat: " + e.getMessage());
                     }
                 }
+
 
                 try {
                     Thread.sleep(6000); // envia heartbeat a cada 3s
@@ -171,6 +186,8 @@ public class Node {
         if (serverSocket != null) {
             serverSocket.close();
         }
+        membershipService.stopFailureDetector();
+
         System.out.println("[Node " + port + "] Encerrado.");
     }
 }

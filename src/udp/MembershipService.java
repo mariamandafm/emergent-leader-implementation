@@ -12,6 +12,9 @@ public class MembershipService {
     DatagramSocket socket;
     private Map<Integer, Long> lastHeartbeat = new ConcurrentHashMap<>();
 
+    private Thread failureDetectorThread;
+    private boolean failureDetectorRunning;
+
 
     public MembershipService(int selfAddress, DatagramSocket socket) {
         this.selfAddress = selfAddress;
@@ -119,7 +122,9 @@ public class MembershipService {
 
         //remove o seed e o novo node, pois eles não precisam receber o novo
         existingMembers.remove(Integer.valueOf(selfAddress));
-        existingMembers.remove(Integer.valueOf(joinAddress));
+        if (joinAddress > 0){
+            existingMembers.remove(Integer.valueOf(joinAddress));
+        }
         var members = existingMembers.size();
         if (members == 0){
             System.out.println("Only seed in the cluster, no need for broacast");
@@ -188,20 +193,66 @@ public class MembershipService {
     }
 
     private void startFailureDetector(Config config) {
-        new Thread(() -> {
-            while (true) {
+        this.failureDetectorRunning = true;
+        failureDetectorThread = new Thread(() -> {
+            boolean isLeader = selfAddress == membership.getSeedAddress();
+
+            while (failureDetectorRunning) {
                 long now = System.currentTimeMillis();
-                for (Integer nodePort : new HashSet<>(lastHeartbeat.keySet())) {
-                    if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 20000) {
-                        System.out.println("[FailureDetector] Node " + nodePort + " não respondeu. Removendo do cluster.");
-                        config.getUpNodes().remove((Integer) nodePort);
-                        lastHeartbeat.remove(nodePort);
+
+                if (isLeader) {
+                    // Líder (seed node) verifica todos os nodes
+                    for (Integer nodePort : new HashSet<>(lastHeartbeat.keySet())) {
+                        if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 20000) {
+                            System.out.println("[FailureDetector " + selfAddress +  "] Node " + nodePort + " não respondeu. Removendo do cluster.");
+                            config.getUpNodes().remove(nodePort);
+                            lastHeartbeat.remove(nodePort);
+                            membership = membership.removeMember(nodePort);
+                            broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
+                            config.setUpNodes(membership.getUpNodesAddress());
+                        }
+                    }
+                } else {
+                    // Nós comuns monitoram apenas o seed
+                    int seedPort = config.getSeedAddress();
+                    if (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 20000) {
+                        System.out.println("[FailureDetector" + selfAddress + "] Seed node " + seedPort + " caiu.");
+                        lastHeartbeat.remove(config.getSeedAddress());
+                        // Verifica se este node é o mais velho
+                        Optional<Member> secondOldest = membership.getSecondOldestMember();
+
+                        if (secondOldest.isPresent() && secondOldest.get().getPort() == selfAddress) {
+                            System.out.println("[LeaderElection] Node " + selfAddress + " é o mais velho. Assumindo como novo seed.");
+                            membership = membership.removeMember(config.getSeedAddress());
+                            membership.seedAddress = selfAddress; // Define-se como novo seed
+
+                            isLeader = true; // Agora pode remover nodes
+                            //atualizar config
+                            config.setUpNodes(membership.getUpNodesAddress());
+
+                            config.setSeedAddress(selfAddress);
+                            broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
+                        }
                     }
                 }
+
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException ignored) {}
             }
-        }).start();
+        });
+        failureDetectorThread.start();
+    }
+
+    private void updateConfig(Config config) {
+        config.setUpNodes(membership.getUpNodesAddress());
+        config.setSeedAddress(selfAddress);
+    }
+
+
+    public void stopFailureDetector(){
+        System.out.println("Parando failure detector na thread" + selfAddress);
+        this.failureDetectorRunning = false;
+        failureDetectorThread.interrupt();
     }
 }
