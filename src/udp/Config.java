@@ -21,24 +21,12 @@ public class Config {
         this.seedAddress = seedAddress;
     }
 
-    public void addUpNode(int port) {
-        upNodes.add(port);
-    }
-
     public void setUpNodes(List<Integer> upNodes) {
         this.upNodes = upNodes;
     }
 
     public List<Integer> getUpNodes() {
         return upNodes;
-    }
-
-    public void addNode(Node node) {
-        nodes.put(node.getPort(), node);
-    }
-
-    public Node removeNode(int port){
-        return nodes.remove(port);
     }
 
     public Map<Integer, Node> getNodes() {

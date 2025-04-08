@@ -96,6 +96,7 @@ public class MembershipService {
         System.out.println(selfAddress + " joined the cluster. Membership=" + membership.getLiveMembers());
     }
 
+    // TODO
 //    public void handleJoinRequest(JoinRequest joinRequest) {
 //        //handlePossibleRejoin(joinRequest);
 //        handleNewJoin(joinRequest);
@@ -122,6 +123,8 @@ public class MembershipService {
 
         //remove o seed e o novo node, pois eles não precisam receber o novo
         existingMembers.remove(Integer.valueOf(selfAddress));
+
+        // para casos em que há o join
         if (joinAddress > 0){
             existingMembers.remove(Integer.valueOf(joinAddress));
         }
@@ -134,7 +137,7 @@ public class MembershipService {
             var acks = 0;
             System.out.println("Membros existentes");
             for (Integer member : existingMembers){
-                sendJoinUpdate(member);
+                sendMembershipUpdate(member);
             }
             while (collector < members){
                 try{
@@ -164,7 +167,7 @@ public class MembershipService {
         return false;
     }
 
-    private void sendJoinUpdate(int memberAddress) {
+    private void sendMembershipUpdate(int memberAddress) {
         String membershipMessage = membership.getSerializedMembership();
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
@@ -223,19 +226,11 @@ public class MembershipService {
 
                         if (secondOldest.isPresent() && secondOldest.get().getPort() == selfAddress) {
                             System.out.println("[LeaderElection] Node " + selfAddress + " é o mais velho. Assumindo como novo seed.");
-                            membership = membership.removeMember(config.getSeedAddress());
-                            membership.seedAddress = selfAddress; // Define-se como novo seed
-
                             isLeader = true; // Agora pode remover nodes
-                            //atualizar config
-                            config.setUpNodes(membership.getUpNodesAddress());
-
-                            config.setSeedAddress(selfAddress);
-                            broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
+                            takeLeadership(config);
                         }
                     }
                 }
-
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException ignored) {}
@@ -244,11 +239,16 @@ public class MembershipService {
         failureDetectorThread.start();
     }
 
-    private void updateConfig(Config config) {
+    private void takeLeadership(Config config){
+        membership = membership.removeMember(config.getSeedAddress());
+        membership.seedAddress = selfAddress; // Define-se como novo seed
+
+        //atualizar config
         config.setUpNodes(membership.getUpNodesAddress());
         config.setSeedAddress(selfAddress);
-    }
 
+        broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
+    }
 
     public void stopFailureDetector(){
         System.out.println("Parando failure detector na thread" + selfAddress);

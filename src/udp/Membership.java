@@ -70,7 +70,6 @@ public class Membership {
         List<Member> members = new ArrayList<>();
         String[] membersAndAge = data.split(",");
 
-        //String[] membersFromMessage = membersAndAge.split(",");
         for (String member : membersAndAge){
             String[] parts = member.split(":");
             int port = Integer.parseInt(parts[0]);
