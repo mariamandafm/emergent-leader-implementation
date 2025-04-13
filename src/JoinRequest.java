@@ -1,2 +1,2 @@
-public class JoinRequest {
+public class JoinRequest{
 }

@@ -1,5 +1,7 @@
 package udp;
 
+import protocols.Protocol;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -8,84 +10,67 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MembershipService {
     int selfAddress;
-    Membership membership;
-    DatagramSocket socket;
+    public Membership membership;
+    //DatagramSocket socket;
     private Map<Integer, Long> lastHeartbeat = new ConcurrentHashMap<>();
 
     private Thread failureDetectorThread;
     private boolean failureDetectorRunning;
 
+    private Protocol protocol;
 
-    public MembershipService(int selfAddress, DatagramSocket socket) {
+
+    public MembershipService(int selfAddress, Protocol protocol) {
         this.selfAddress = selfAddress;
         this.membership = new Membership(0, new ArrayList<>());
-        this.socket = socket;
+        this.protocol = protocol;
     }
 
     public boolean join(int seedAddress, Config config){
         var maxJoinAttempts = 5;
 
-        for(int i = 0; i < maxJoinAttempts; i++){
-            try {
-                String joinResult = joinAttempt(seedAddress, config);
-                if (joinResult.equals("accepted")) {
-                    start(config);
-                    return true;
-                }
-            } catch (Exception e) {
-                System.out.println("Join attempt " + i + "from " + selfAddress + " to" + seedAddress + " failed. Retrying");
-            }
+        String joinResult = joinAttempt(seedAddress, config);
+        if (joinResult.equals("accepted")) {
+            System.out.println(selfAddress + " Aceito. Iniciando servidor.");
+            start(config);
+            return true;
         }
         return false;
         //throw new JoinFailedException("Unable to join the cluster after " + maxJoinAttempts + " attempts");
     }
 
-    private String joinAttempt(int seedAddress, Config config){
-        // É o seed node.
+    private String joinAttempt(int seedAddress, Config config) {
         if (selfAddress == seedAddress) {
             System.out.println("Entrando como seed");
-            int membershipVersion = 1;
-            int age = 1;
-            updateMembership(new Membership(membershipVersion, Arrays.asList(new Member(selfAddress, age))));
+            updateMembership(new Membership(1, Arrays.asList(new Member(selfAddress, 1))));
+            membership.setSeedAddress(selfAddress);
             config.setUpNodes(membership.getUpNodesAddress());
-
-            start(config);
             return "accepted";
         }
-        try {
-            System.out.println("Enviando join request pro seed");
-            //DatagramSocket clientSocket = new DatagramSocket();
-            byte[] receivemessage = new byte[1024];
-            // Envia join request para o seed
-            sendJoinRequest(seedAddress);
-            // Espera resposta do seed
-            DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
-            socket.receive(receivepacket);
-            String responseMessage = new String(receivepacket.getData(), 0, receivepacket.getLength());
 
-            StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
-            String responseStatus = tokenizer.nextToken();
-            String responseMembership = tokenizer.nextToken();
-            String responseMembershipVersion = tokenizer.nextToken();
-            membership.deserializeMembershipAndUpdate(responseMembership, responseMembershipVersion);
-            return responseStatus;
+        try {
+            System.out.println("Enviando join request para seed " + seedAddress);
+            sendJoinRequest(config.getSeedAddress());
+
+            return "accepted";
         } catch (Exception e) {
-            System.out.println("[Node " + seedAddress + "] Could not join cluster");
+            System.out.println("Erro no join attempt: " + e.getMessage());
+            return "error;join_failed";
         }
-        return "Erro";
     }
 
     private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
-            byte[] sendMessage;
+//            byte[] sendMessage;
 
             String message = "join_request;" + selfAddress;
-            sendMessage = message.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(
-                    sendMessage, sendMessage.length,
-                    inetAddress, seedAddress);
-            socket.send(sendPacket);
+//            sendMessage = message.getBytes();
+//            DatagramPacket sendPacket = new DatagramPacket(
+//                    sendMessage, sendMessage.length,
+//                    inetAddress, seedAddress);
+//            socket.send(sendPacket);
+            protocol.send(message, inetAddress, seedAddress);
         } catch (Exception e){
             System.out.println("[Node " + seedAddress + "] Could not send join request.");
         }
@@ -120,7 +105,7 @@ public class MembershipService {
     // Seed node envia uma mensagem para todos os nodes quando um novo membro entra no cluster
     // Os nodes envian um ack para confirmar o recebimento.
     private boolean broadcastMembershipUpdate(List<Integer> existingMembers, int joinAddress) {
-
+//
         //remove o seed e o novo node, pois eles não precisam receber o novo
         existingMembers.remove(Integer.valueOf(selfAddress));
 
@@ -140,21 +125,20 @@ public class MembershipService {
                 sendMembershipUpdate(member);
             }
             while (collector < members){
-                try{
-                    byte[] receivemessage = new byte[1024];
-                    DatagramPacket receivepacket = new DatagramPacket(receivemessage, receivemessage.length);
-                    socket.receive(receivepacket);
+                String responseMessage = protocol.waitForMessage(
+                        msg -> msg.startsWith("ack;"), 3000
+                );
 
-                    String responseMessage = new String(receivepacket.getData(), 0, receivepacket.getLength());
+                if (responseMessage != null) {
                     StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
                     String response = tokenizer.nextToken();
                     collector++;
-                    if (Objects.equals(response, "ack")) {
+                    if ("ack".equals(response)) {
                         acks++;
                     }
-
-                } catch (Exception e) {
-                    System.out.println("Could not receive update response from nodes");
+                } else {
+                    System.out.println("Timeout esperando ack de algum membro");
+                    collector++;
                 }
             }
 
@@ -171,13 +155,8 @@ public class MembershipService {
         String membershipMessage = membership.getSerializedMembership();
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
-            byte[] sendMessage;
             String message = "membership_update;" + membershipMessage;
-            sendMessage = message.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(
-                    sendMessage, sendMessage.length,
-                    inetAddress, memberAddress);
-            socket.send(sendPacket);
+            protocol.send(message, inetAddress, memberAddress);
         } catch (Exception e){
             System.out.println("Could not send membership update");
         }
@@ -222,9 +201,8 @@ public class MembershipService {
                         System.out.println("[FailureDetector" + selfAddress + "] Seed node " + seedPort + " caiu.");
                         lastHeartbeat.remove(config.getSeedAddress());
                         // Verifica se este node é o mais velho
-                        Optional<Member> secondOldest = membership.getSecondOldestMember();
-
-                        if (secondOldest.isPresent() && secondOldest.get().getPort() == selfAddress) {
+                        Optional<Member> oldestMember = membership.getSecondOldestMember();
+                        if (oldestMember.isPresent() && oldestMember.get().getPort() == selfAddress) {
                             System.out.println("[LeaderElection] Node " + selfAddress + " é o mais velho. Assumindo como novo seed.");
                             isLeader = true; // Agora pode remover nodes
                             takeLeadership(config);
@@ -240,6 +218,7 @@ public class MembershipService {
     }
 
     private void takeLeadership(Config config){
+        System.out.println("TOMANDO LIDERANÇA");
         membership = membership.removeMember(config.getSeedAddress());
         membership.seedAddress = selfAddress; // Define-se como novo seed
 

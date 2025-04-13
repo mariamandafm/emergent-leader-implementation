@@ -1,27 +1,40 @@
 package udp;
 
+import protocols.Protocol;
+import protocols.UDPProtocol;
+
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
 public class EmergentLeader {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
         Gateway gateway = new Gateway(config);
         gateway.start();
 
+
         Map<Integer, Node> nodes = new HashMap<>();
 
+        System.out.println("Iniciando node 9001");
         Node node1 = new Node(config, 9001);
         node1.start();
         nodes.put(9001, node1);
-        Node node2 = new Node(config, 9002);
-        node2.start();
-        nodes.put(9002, node2);
-        Node node3 = new Node(config, 9003);
-        node3.start();
-        nodes.put(9003, node3);
+        System.out.println("Node 9001 iniciado");
+
+//        System.out.println("Iniciando node 9002");
+//        Node node2 = new Node(config, 9002);
+//        node2.start();
+//        nodes.put(9002, node2);
+//        System.out.println("Node 9002 iniciado");
+//
+//        System.out.println("Iniciando node 9003");
+//        Node node3 = new Node(config, 9003);
+//        node3.start();
+//        nodes.put(9003, node3);
+//        System.out.println("Node 9003 iniciado");
         //config.addNode(node1);
 
         Scanner scanner = new Scanner(System.in);
@@ -78,7 +91,8 @@ public class EmergentLeader {
                 case "exit":
                     System.out.println("Encerrando todos os nodes...");
                     for (Node node : nodes.values()) {
-                        node.stop();
+                        //node.stop();
+                        System.out.println(node);
                     }
                     return;
 

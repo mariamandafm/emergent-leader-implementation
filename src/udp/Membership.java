@@ -36,8 +36,9 @@ public class Membership {
     }
 
     public Optional<Member> getSecondOldestMember() {
+        List<Member> test = liveMembers.stream().sorted(Comparator.comparingInt(Member::getAge)).toList();
         return liveMembers.stream()
-                .sorted(Comparator.comparingInt(Member::getAge).reversed())
+                .sorted(Comparator.comparingInt(Member::getAge))
                 .skip(1) // Pula o mais velho
                 .findFirst();
     }
@@ -80,4 +81,7 @@ public class Membership {
         this.version = Integer.parseInt(version);
     }
 
+    public void setSeedAddress(int seedAddress) {
+        this.seedAddress = seedAddress;
+    }
 }
