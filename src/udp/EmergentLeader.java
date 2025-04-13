@@ -15,7 +15,6 @@ public class EmergentLeader {
         Gateway gateway = new Gateway(config);
         gateway.start();
 
-
         Map<Integer, Node> nodes = new HashMap<>();
 
         System.out.println("Iniciando node 9001");
@@ -91,7 +90,7 @@ public class EmergentLeader {
                 case "exit":
                     System.out.println("Encerrando todos os nodes...");
                     for (Node node : nodes.values()) {
-                        //node.stop();
+                        node.stop();
                         System.out.println(node);
                     }
                     return;

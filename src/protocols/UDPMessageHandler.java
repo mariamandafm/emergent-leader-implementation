@@ -72,17 +72,13 @@ public class UDPMessageHandler implements MessageHandler{
                     }
                     break;
                 case "membership_update":
-                    System.out.println("[ " + port + " ] Recebendo artualização de join #######");
+                    System.out.println("[ " + port + " ] Recebendo atualização de join ");
                     version = tokenizer.nextToken();
                     membershipService.membership.deserializeMembershipAndUpdate(params, version);
-                    System.out.println(membershipService.membership.getLiveMembers());
                     return "ack;";
                 case "accepted":
                     version = tokenizer.nextToken();
-                    System.out.println(membershipService.membership.getSerializedMembership());
-                    System.out.println("Atualizando membership do node");
                     membershipService.membership.deserializeMembershipAndUpdate(params, version);
-                    System.out.println(membershipService.membership.getSerializedMembership());
                     return "ack;";
                 case "heartbeat":
                     int senderPort = Integer.parseInt(params);

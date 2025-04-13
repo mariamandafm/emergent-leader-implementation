@@ -27,41 +27,6 @@ public class UDPProtocol implements Protocol {
         }
     }
 
-//    @Override
-//    public void sendMessage(String message, InetAddress address, int port) throws IOException {
-//        if (message == null || message.trim().isEmpty()) return;
-//        try{
-//            byte[] responseData = message.getBytes();
-//            DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, port);
-//            socket.send(responsePacket);
-//        } catch (Exception e) {
-//            System.err.println("Erro ao enviar UDP: " + e.getMessage());
-//        }
-//
-//    }
-
-//    @Override
-//    public String receiveMessage() {
-//        try {
-//            byte[] receiveBuffer = new byte[1024];
-//            DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
-//            socket.receive(receivePacket);
-//            String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
-//            System.out.println("Menssagem recebida extraordinaria " + selfAddress + " " + message);
-////            if (message == ""){
-////                return null;
-////            }
-//            //String response = handler.handle(message);
-//
-//            //sendMessage(response, receivePacket.getAddress(), receivePacket.getPort());
-//            return message;
-//        } catch (Exception e) {
-//            System.out.println("TIMEOUT EXCEPTION !!!!");
-//            System.err.println("Erro ao receber UDP: " + e.getMessage());
-//            return null;
-//        }
-//    }
-
     @Override
     public void start() {
         new Thread(() -> {
@@ -73,7 +38,7 @@ public class UDPProtocol implements Protocol {
                     socket.receive(receivePacket);
 
                     String receivedMessage = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                    System.out.println("[UDPProtocol " + selfAddress + "] Mensagem recebida: " + receivedMessage);
+                    //System.out.println("[UDPProtocol " + selfAddress + "] Mensagem recebida: " + receivedMessage);
 
                     // Envia a mensagem pra fila
                     messageQueue.offer(receivedMessage);
@@ -86,7 +51,7 @@ public class UDPProtocol implements Protocol {
                                 responseBytes, responseBytes.length,
                                 receivePacket.getAddress(), receivePacket.getPort());
                         socket.send(responsePacket);
-                        System.out.println("[UDPProtocol " + selfAddress + "] Resposta enviada: " + response);
+                        //System.out.println("[UDPProtocol " + selfAddress + "] Resposta enviada: " + response);
                     }
                 } catch (IOException e) {
 //                    if (running) {

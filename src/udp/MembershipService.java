@@ -41,7 +41,7 @@ public class MembershipService {
 
     private String joinAttempt(int seedAddress, Config config) {
         if (selfAddress == seedAddress) {
-            System.out.println("Entrando como seed");
+            System.out.println("[" + selfAddress + "] Entrando como seed");
             updateMembership(new Membership(1, Arrays.asList(new Member(selfAddress, 1))));
             membership.setSeedAddress(selfAddress);
             config.setUpNodes(membership.getUpNodesAddress());
@@ -62,14 +62,8 @@ public class MembershipService {
     private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
-//            byte[] sendMessage;
 
             String message = "join_request;" + selfAddress;
-//            sendMessage = message.getBytes();
-//            DatagramPacket sendPacket = new DatagramPacket(
-//                    sendMessage, sendMessage.length,
-//                    inetAddress, seedAddress);
-//            socket.send(sendPacket);
             protocol.send(message, inetAddress, seedAddress);
         } catch (Exception e){
             System.out.println("[Node " + seedAddress + "] Could not send join request.");
@@ -78,14 +72,7 @@ public class MembershipService {
 
     private void start(Config config) {
         startFailureDetector(config);
-        System.out.println(selfAddress + " joined the cluster. Membership=" + membership.getLiveMembers());
     }
-
-    // TODO
-//    public void handleJoinRequest(JoinRequest joinRequest) {
-//        //handlePossibleRejoin(joinRequest);
-//        handleNewJoin(joinRequest);
-//    }
 
     public void handleNewJoin(int joinAddress, Config config) {
         if (membership.contains(joinAddress)) {
@@ -163,15 +150,12 @@ public class MembershipService {
     }
 
     private void updateMembership(Membership membership) {
-        System.out.println("Atualizando membership");
-        System.out.println(membership.version);
-        System.out.println(membership.liveMembers);
+        System.out.println("[" + selfAddress + "] Atualizando membership");
         this.membership = membership;
     }
 
     public void receiveHeartbeat(int port) {
         lastHeartbeat.put(port, System.currentTimeMillis());
-        System.out.println(lastHeartbeat);
     }
 
     private void startFailureDetector(Config config) {
@@ -204,7 +188,7 @@ public class MembershipService {
                         Optional<Member> oldestMember = membership.getSecondOldestMember();
                         if (oldestMember.isPresent() && oldestMember.get().getPort() == selfAddress) {
                             System.out.println("[LeaderElection] Node " + selfAddress + " é o mais velho. Assumindo como novo seed.");
-                            isLeader = true; // Agora pode remover nodes
+                            isLeader = true;
                             takeLeadership(config);
                         }
                     }
