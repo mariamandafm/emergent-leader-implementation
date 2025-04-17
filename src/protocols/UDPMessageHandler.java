@@ -1,25 +1,30 @@
 package protocols;
 
-import udp.Config;
-import udp.MembershipService;
-import udp.TasksApp;
+import components.Config;
+import components.MembershipService;
+import components.TasksApp;
 
-import java.net.InetAddress;
+import java.io.IOException;
+import java.net.*;
 import java.util.StringTokenizer;
 
 public class UDPMessageHandler implements MessageHandler{
     private int port;
-    private final TasksApp tasksApp;
 
     private final MembershipService membershipService;
 
+    private DatagramSocket socket;
+
     private final Config config;
 
-    public UDPMessageHandler(int port, MembershipService membershipService, TasksApp tasksApp, Config config) {
+    public UDPMessageHandler(int port, MembershipService membershipService, Config config) {
         this.port = port;
-        this.tasksApp = tasksApp;
         this.config = config;
         this.membershipService = membershipService;
+    }
+
+    public void setSocket(DatagramSocket socket) {
+        this.socket = socket;
     }
 
     @Override
@@ -50,14 +55,8 @@ public class UDPMessageHandler implements MessageHandler{
 
             switch (operation) {
                 case "add":
-                    if (params.isEmpty()) {
-                        return "Erro: Nenhuma tarefa especificada";
-                    }
-                    tasksApp.addTask(params);
-                    return "Tarefa adicionada: " + params;
-
                 case "read":
-                    return tasksApp.getTasks();
+                    return forwardToTaskServerViaUDP(message);
                 case "join_request":
                     // se for seed
                     if (port == config.getSeedAddress()){
@@ -92,5 +91,31 @@ public class UDPMessageHandler implements MessageHandler{
             return "Erro: " + e.getMessage();
         }
         return "";
+    }
+
+    private String forwardToTaskServerViaUDP(String message) {
+        try {
+            InetAddress nodeAddress = InetAddress.getByName("localhost");
+
+            // Envia a mensagem
+            byte[] sendBuffer = message.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(
+                    sendBuffer, sendBuffer.length, nodeAddress, 9005);
+            socket.send(sendPacket);
+
+            // Recebe a resposta
+            byte[] receiveData = new byte[2048];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            socket.setSoTimeout(2000);  // timeout de resposta
+
+            socket.receive(receivePacket);
+
+            return new String(receivePacket.getData(), 0, receivePacket.getLength());
+
+        } catch (SocketTimeoutException e) {
+            return "Erro: TaskServer não respondeu (timeout)";
+        } catch (IOException e) {
+            return "Erro ao comunicar com TaskServer: " + e.getMessage();
+        }
     }
 }

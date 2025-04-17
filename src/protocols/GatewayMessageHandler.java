@@ -1,6 +1,5 @@
 package protocols;
-import protocols.MessageHandler;
-import udp.Config;
+import components.Config;
 
 import java.io.IOException;
 import java.net.*;
@@ -35,6 +34,11 @@ public class GatewayMessageHandler implements MessageHandler {
         return forwardToNodeAndGetResponse(operation, message);
     }
 
+    @Override
+    public void setSocket(DatagramSocket socket) {
+        //
+    }
+
     private String forwardToNodeAndGetResponse(String operation, String originalMessage) {
         try (DatagramSocket clientSocket = new DatagramSocket()) {
             InetAddress nodeAddress = InetAddress.getByName("localhost");
@@ -47,8 +51,8 @@ public class GatewayMessageHandler implements MessageHandler {
             Random rand = new Random();
             int nodePort = allNodes.get(rand.nextInt(allNodes.size()));
 
-            System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
-                    operation, nodePort);
+            //System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
+            //        operation, nodePort);
 
             byte[] sendBuffer = originalMessage.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(

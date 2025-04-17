@@ -1,9 +1,7 @@
-package udp;
+package components;
 
 import protocols.Protocol;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

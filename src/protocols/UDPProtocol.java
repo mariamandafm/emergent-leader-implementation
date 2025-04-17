@@ -22,6 +22,7 @@ public class UDPProtocol implements Protocol {
 
             socket = new DatagramSocket(selfAddress);
             socket.setSoTimeout(5000);
+
         } catch (Exception e) {
             throw new RuntimeException("Erro iniciando UDP socket", e);
         }
@@ -30,6 +31,7 @@ public class UDPProtocol implements Protocol {
     @Override
     public void start() {
         new Thread(() -> {
+            handler.setSocket(socket);
             System.out.println("[UDPProtocol] Escutando na porta " + selfAddress);
             while (running) {
                 try {

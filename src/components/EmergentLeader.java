@@ -1,7 +1,4 @@
-package udp;
-
-import protocols.Protocol;
-import protocols.UDPProtocol;
+package components;
 
 import java.net.SocketException;
 import java.util.HashMap;
@@ -14,6 +11,9 @@ public class EmergentLeader {
 
         Gateway gateway = new Gateway(config);
         gateway.start();
+
+        TaskServer taskServer = new TaskServer();
+        taskServer.start();
 
         Map<Integer, Node> nodes = new HashMap<>();
 

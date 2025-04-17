@@ -1,4 +1,4 @@
-package udp;
+package components;
 
 import protocols.MessageHandler;
 import protocols.Protocol;
@@ -30,7 +30,7 @@ public class Node {
     public void start() throws SocketException {
         this.protocol = new UDPProtocol(port, handler);
         this.membershipService = new MembershipService(port, protocol);
-        this.handler = new UDPMessageHandler(port, membershipService, tasksApp, config);
+        this.handler = new UDPMessageHandler(port, membershipService, config);
         protocol.setHandler(handler);
 
         if (membershipService.join(config.getSeedAddress(), config)){

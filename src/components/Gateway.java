@@ -1,12 +1,8 @@
-package udp;
+package components;
 
 import protocols.*;
 
-import java.io.IOException;
 import java.net.InetAddress;
-import java.util.List;
-import java.util.Random;
-import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Gateway {
