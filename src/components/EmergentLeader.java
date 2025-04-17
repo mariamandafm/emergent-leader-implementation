@@ -1,6 +1,7 @@
 package components;
 
 import factory.NetworkFactory;
+import factory.TCPNetworkFactory;
 import factory.UDPNetworkFactory;
 
 import java.net.SocketException;
@@ -12,7 +13,7 @@ public class EmergentLeader {
     public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
-        NetworkFactory factory = new UDPNetworkFactory();
+        NetworkFactory factory = new TCPNetworkFactory();
 
         Gateway gateway = new Gateway(factory, config);
         gateway.start();
