@@ -1,5 +1,8 @@
 package components;
 
+import factory.NetworkFactory;
+import factory.UDPNetworkFactory;
+
 import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,16 +12,18 @@ public class EmergentLeader {
     public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
-        Gateway gateway = new Gateway(config);
+        NetworkFactory factory = new UDPNetworkFactory();
+
+        Gateway gateway = new Gateway(factory, config);
         gateway.start();
 
-        TaskServer taskServer = new TaskServer();
+        TaskServer taskServer = new TaskServer(factory);
         taskServer.start();
 
         Map<Integer, Node> nodes = new HashMap<>();
 
         System.out.println("Iniciando node 9001");
-        Node node1 = new Node(config, 9001);
+        Node node1 = new Node(factory, config, 9001);
         node1.start();
         nodes.put(9001, node1);
         System.out.println("Node 9001 iniciado");
@@ -56,7 +61,7 @@ public class EmergentLeader {
                     if (nodes.containsKey(startPort)) {
                         System.out.println("Node já está rodando.");
                     } else {
-                        Node node = new Node(config, startPort);
+                        Node node = new Node(factory, config, startPort);
                         node.start();
 
                         // TODO: Modificar isso, pois o seed node que deve deifinir a lista de nodes ativos

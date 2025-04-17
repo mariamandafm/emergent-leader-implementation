@@ -1,9 +1,8 @@
 package components;
 
-import protocols.MessageHandler;
-import protocols.Protocol;
-import protocols.UDPMessageHandler;
-import protocols.UDPProtocol;
+import factory.NetworkFactory;
+import protocols.*;
+
 import java.net.InetAddress;
 import java.net.SocketException;
 
@@ -18,9 +17,12 @@ public class Node {
 
     private MessageHandler handler;
 
-    public Node(Config config, int port) {
+    private NetworkFactory factory;
+
+    public Node(NetworkFactory factory, Config config, int port) {
         this.config = config;
         this.port = port;
+        this.factory = factory;
     }
 
     public int getPort() {
@@ -28,9 +30,10 @@ public class Node {
     }
 
     public void start() throws SocketException {
-        this.protocol = new UDPProtocol(port, handler);
+        this.protocol = factory.createProtocol(port);
         this.membershipService = new MembershipService(port, protocol);
-        this.handler = new UDPMessageHandler(port, membershipService, config);
+        //this.handler = new TCPMessageHandler(port, membershipService, config);
+        this.handler = factory.createMessageHandler(port, membershipService, config);
         protocol.setHandler(handler);
 
         if (membershipService.join(config.getSeedAddress(), config)){

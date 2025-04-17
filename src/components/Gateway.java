@@ -1,5 +1,6 @@
 package components;
 
+import factory.NetworkFactory;
 import protocols.*;
 
 import java.net.InetAddress;
@@ -16,10 +17,10 @@ public class Gateway {
     // Guarda informações do cliente para enviar resposta depois
     private final ConcurrentHashMap<String, ClientInfo> clientMap = new ConcurrentHashMap<>();
 
-    public Gateway(Config config) {
+    public Gateway(NetworkFactory factory, Config config) {
         this.config = config;
-        this.protocol = new UDPProtocol(PORT, handler);
-        this.handler = new GatewayMessageHandler(config);
+        this.protocol = factory.createProtocol(PORT);
+        this.handler = factory.createGatewayMessageHandler(config);
         protocol.setHandler(handler);
     }
 

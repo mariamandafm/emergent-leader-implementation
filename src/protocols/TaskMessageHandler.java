@@ -3,9 +3,10 @@ package protocols;
 import components.TasksApp;
 
 import java.net.DatagramSocket;
+import java.net.ServerSocket;
 import java.util.StringTokenizer;
 
-public class UDPTaskMessageHandler implements MessageHandler{
+public class TaskMessageHandler implements MessageHandler{
     private final TasksApp tasksApp = new TasksApp();
 
     @Override
@@ -43,5 +44,10 @@ public class UDPTaskMessageHandler implements MessageHandler{
     @Override
     public void setSocket(DatagramSocket socket) {
         // ...
+    }
+
+    @Override
+    public void setSocket(ServerSocket socket) {
+        //
     }
 }

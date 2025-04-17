@@ -167,7 +167,7 @@ public class MembershipService {
                 if (isLeader) {
                     // Líder (seed node) verifica todos os nodes
                     for (Integer nodePort : new HashSet<>(lastHeartbeat.keySet())) {
-                        if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 20000) {
+                        if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 10000) {
                             System.out.println("[FailureDetector " + selfAddress +  "] Node " + nodePort + " não respondeu. Removendo do cluster.");
                             config.getUpNodes().remove(nodePort);
                             lastHeartbeat.remove(nodePort);

@@ -4,31 +4,33 @@ import components.Config;
 import components.MembershipService;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.*;
 import java.util.StringTokenizer;
 
-public class UDPMessageHandler implements MessageHandler{
+public class TCPMessageHandler implements MessageHandler{
     private int port;
 
     private final MembershipService membershipService;
 
-    private DatagramSocket socket;
+    private ServerSocket socket;
 
     private final Config config;
 
-    public UDPMessageHandler(int port, MembershipService membershipService, Config config) {
+    public TCPMessageHandler(int port, MembershipService membershipService, Config config) {
         this.port = port;
         this.config = config;
         this.membershipService = membershipService;
     }
 
     public void setSocket(DatagramSocket socket) {
-        this.socket = socket;
+        //this.socket = socket;
     }
 
     @Override
     public void setSocket(ServerSocket socket) {
-        //
+        this.socket = socket;
     }
 
     @Override
@@ -98,23 +100,24 @@ public class UDPMessageHandler implements MessageHandler{
     }
 
     private String forwardToTaskServer(String message) {
-        try {
-            InetAddress nodeAddress = InetAddress.getByName("localhost");
+        try (Socket clientSocket = new Socket("localhost", 9005)) {
+            clientSocket.setSoTimeout(2000); // timeout de resposta
 
-            // Envia a mensagem
-            byte[] sendBuffer = message.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(
-                    sendBuffer, sendBuffer.length, nodeAddress, 9005);
-            socket.send(sendPacket);
+            // Enviar a mensagem
+            OutputStream output = clientSocket.getOutputStream();
+            output.write(message.getBytes());
+            output.flush();
 
-            // Recebe a resposta
-            byte[] receiveData = new byte[2048];
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            socket.setSoTimeout(2000);  // timeout de resposta
+            // Receber a resposta
+            InputStream input = clientSocket.getInputStream();
+            byte[] responseBuffer = new byte[2048];
+            int read = input.read(responseBuffer);
 
-            socket.receive(receivePacket);
+            if (read == -1) {
+                return "Erro: TaskServer fechou conexão sem responder";
+            }
 
-            return new String(receivePacket.getData(), 0, receivePacket.getLength());
+            return new String(responseBuffer, 0, read);
 
         } catch (SocketTimeoutException e) {
             return "Erro: TaskServer não respondeu (timeout)";

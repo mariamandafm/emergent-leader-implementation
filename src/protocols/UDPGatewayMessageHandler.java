@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Random;
 import java.util.StringTokenizer;
 
-public class GatewayMessageHandler implements MessageHandler {
+public class UDPGatewayMessageHandler implements MessageHandler {
     private final Config config;
 
-    public GatewayMessageHandler(Config config) {
+    private DatagramSocket socket;
+
+    public UDPGatewayMessageHandler(Config config) {
         this.config = config;
     }
 
@@ -36,6 +38,11 @@ public class GatewayMessageHandler implements MessageHandler {
 
     @Override
     public void setSocket(DatagramSocket socket) {
+        this.socket = socket;
+    }
+
+    @Override
+    public void setSocket(ServerSocket socket) {
         //
     }
 

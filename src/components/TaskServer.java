@@ -1,6 +1,7 @@
 package components;
 
 
+import factory.NetworkFactory;
 import protocols.*;
 
 public class TaskServer {
@@ -14,9 +15,9 @@ public class TaskServer {
 //        this.handler = handler;
 //    }
 
-    public TaskServer() {
-        this.protocol = new UDPProtocol(PORT, handler);
-        this.handler = new UDPTaskMessageHandler();
+    public TaskServer(NetworkFactory factory) {
+        this.protocol = factory.createProtocol(PORT);
+        this.handler = new TaskMessageHandler();
         protocol.setHandler(handler);
     }
 
