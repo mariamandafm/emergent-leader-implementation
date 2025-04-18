@@ -35,11 +35,10 @@ public class TasksApp {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("LISTA DE TAREFAS\n");
-        sb.append("================\n");
+        sb.append("LISTA DE TAREFAS:");
 
         for (int i = 0; i < tasks.size(); i++) {
-            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
+            sb.append(i + 1).append(". ").append(tasks.get(i)).append(",");
         }
 
         return sb.toString();

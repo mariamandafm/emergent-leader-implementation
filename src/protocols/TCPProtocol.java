@@ -22,7 +22,7 @@ public class TCPProtocol implements Protocol{
     public TCPProtocol(int selfAddress) {
         this.selfAddress = selfAddress;
         try {
-            socket = new ServerSocket(selfAddress, 300);
+            socket = new ServerSocket(selfAddress, 600); // Servidor espera conexões na porta indicada
         } catch (IOException e2) {
             e2.printStackTrace();
         }
@@ -32,19 +32,19 @@ public class TCPProtocol implements Protocol{
     public void start() {
         new Thread(() -> {
             handler.setSocket(socket);
+            System.out.println("[TCPProtocol] Escutando na porta " + selfAddress);
             while(running) {
-                System.out.println("[TCPProtocol] Escutando na porta " + selfAddress);
                 try {
-                    Socket connection = socket.accept();
+                    Socket connection = socket.accept(); // Bloqueia e fica esperando uma conexão
                     BufferedReader input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                     String receivedMessage = input.readLine();
                     PrintWriter output = new PrintWriter(connection.getOutputStream(), true);
-
                     if (receivedMessage != null) {
                         messageQueue.offer(receivedMessage);
                         String response = handler.handle(receivedMessage);
                         if (response != null && !response.trim().isEmpty()) {
                             output.println(response);
+                            connection.close();
                         }
                     }
                 } catch (IOException e) {

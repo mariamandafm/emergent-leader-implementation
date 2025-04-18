@@ -25,19 +25,19 @@ public class TaskMessageHandler implements MessageHandler{
             switch (operation) {
                 case "add":
                     if (params.isEmpty()) {
-                        return "Erro: Nenhuma tarefa especificada";
+                        return "[TaskServer] Erro: Nenhuma tarefa especificada";
                     }
                     tasksApp.addTask(params);
-                    return "Tarefa adicionada: " + params;
+                    return "[TaskServer] Tarefa adicionada: " + params;
 
                 case "read":
                     return tasksApp.getTasks();
                 default:
-                    System.out.println("Erro: Operação inválida - " + operation);
+                    System.out.println("[TaskServer] Erro: Operação inválida - " + operation);
                     return "";
             }
         } catch (Exception e) {
-            return "Erro: " + e.getMessage();
+            return "[TaskServer] Erro: " + e.getMessage();
         }
     }
 

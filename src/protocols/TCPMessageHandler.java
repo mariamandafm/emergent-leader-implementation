@@ -3,9 +3,7 @@ package protocols;
 import components.Config;
 import components.MembershipService;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.*;
 import java.util.StringTokenizer;
 
@@ -104,20 +102,19 @@ public class TCPMessageHandler implements MessageHandler{
             clientSocket.setSoTimeout(2000); // timeout de resposta
 
             // Enviar a mensagem
-            OutputStream output = clientSocket.getOutputStream();
-            output.write(message.getBytes());
-            output.flush();
+            PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
+            output.println(message);
 
             // Receber a resposta
-            InputStream input = clientSocket.getInputStream();
-            byte[] responseBuffer = new byte[2048];
-            int read = input.read(responseBuffer);
+            BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String reply = input.readLine();
 
-            if (read == -1) {
+            if (reply == null) {
                 return "Erro: TaskServer fechou conexão sem responder";
             }
-
-            return new String(responseBuffer, 0, read);
+            //String reply = new String(responseBuffer, 0, read);
+            //String reply = "Resposta do servidor task";
+            return reply;
 
         } catch (SocketTimeoutException e) {
             return "Erro: TaskServer não respondeu (timeout)";
