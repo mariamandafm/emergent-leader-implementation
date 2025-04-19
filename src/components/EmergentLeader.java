@@ -1,5 +1,6 @@
 package components;
 
+import factory.HTTPNetworkFactory;
 import factory.NetworkFactory;
 import factory.TCPNetworkFactory;
 import factory.UDPNetworkFactory;
@@ -13,7 +14,7 @@ public class EmergentLeader {
     public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
-        NetworkFactory factory = new UDPNetworkFactory();
+        NetworkFactory factory = new HTTPNetworkFactory();
 
         Gateway gateway = new Gateway(factory, config);
         gateway.start();
