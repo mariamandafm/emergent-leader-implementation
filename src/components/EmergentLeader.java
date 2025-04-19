@@ -13,7 +13,7 @@ public class EmergentLeader {
     public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
-        NetworkFactory factory = new TCPNetworkFactory();
+        NetworkFactory factory = new UDPNetworkFactory();
 
         Gateway gateway = new Gateway(factory, config);
         gateway.start();

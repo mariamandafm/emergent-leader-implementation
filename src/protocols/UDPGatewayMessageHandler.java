@@ -24,7 +24,7 @@ public class UDPGatewayMessageHandler implements MessageHandler {
         }
 
         StringTokenizer tokenizer = new StringTokenizer(message, ";");
-        if (!tokenizer.hasMoreTokens()) return "Erro: Mensagem malformada";
+        if (!tokenizer.hasMoreTokens()) return "ERROR: Mensagem malformada";
 
         String operation = tokenizer.nextToken();
 
@@ -52,7 +52,7 @@ public class UDPGatewayMessageHandler implements MessageHandler {
             List<Integer> allNodes = config.getUpNodes();
 
             if (allNodes.isEmpty()) {
-                return "Erro: Nenhum node disponível";
+                return "ERROR: Nenhum node disponível";
             }
 
             Random rand = new Random();
@@ -74,10 +74,10 @@ public class UDPGatewayMessageHandler implements MessageHandler {
                 clientSocket.receive(receivePacket);
                 return new String(receivePacket.getData(), 0, receivePacket.getLength());
             } catch (SocketTimeoutException e) {
-                return "Erro: Timeout ao aguardar resposta do node";
+                return "ERROR: Timeout ao aguardar resposta do node";
             }
         } catch (IOException e) {
-            return "Erro: Falha ao encaminhar requisição - " + e.getMessage();
+            return "ERROR: Falha ao encaminhar requisição - " + e.getMessage();
         }
     }
 }

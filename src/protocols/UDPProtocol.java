@@ -21,7 +21,7 @@ public class UDPProtocol implements Protocol {
         try {
 
             socket = new DatagramSocket(selfAddress);
-            socket.setSoTimeout(5000);
+            socket.setSoTimeout(1000);
 
         } catch (Exception e) {
             throw new RuntimeException("Erro iniciando UDP socket", e);
