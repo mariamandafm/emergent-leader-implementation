@@ -25,7 +25,7 @@ public class TCPGatewayMessageHandler implements MessageHandler {
         }
 
         StringTokenizer tokenizer = new StringTokenizer(message, ";");
-        if (!tokenizer.hasMoreTokens()) return "Erro: Mensagem malformada";
+        if (!tokenizer.hasMoreTokens()) return "ERROR: Mensagem malformada";
 
         String operation = tokenizer.nextToken();
 
@@ -51,7 +51,7 @@ public class TCPGatewayMessageHandler implements MessageHandler {
         List<Integer> allNodes = config.getUpNodes();
 
         if (allNodes.isEmpty()) {
-            return "Erro: Nenhum node disponível";
+            return "ERROR: Nenhum node disponível";
         }
 
         try {
@@ -73,9 +73,9 @@ public class TCPGatewayMessageHandler implements MessageHandler {
                 return reader.readLine(); // espera uma única linha como resposta
             }
         } catch (SocketTimeoutException e) {
-            return "Erro: Timeout ao aguardar resposta do node";
+            return "ERROR: Timeout ao aguardar resposta do node";
         } catch (IOException e) {
-            return "Erro: Falha ao encaminhar requisição - " + e.getMessage();
+            return "ERROR: Falha ao encaminhar requisição - " + e.getMessage();
         }
     }
 }

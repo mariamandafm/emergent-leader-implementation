@@ -88,7 +88,7 @@ public class TCPMessageHandler implements MessageHandler{
                     membershipService.receiveHeartbeat(senderPort);
                     return "";
                 default:
-                    System.out.println(port+ "Erro: Operação inválida - " + operation);
+                    System.out.println(port+ "ERROR: Operação inválida - " + operation);
                     return "";
             }
         } catch (Exception e) {
