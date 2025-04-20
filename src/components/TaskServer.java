@@ -17,7 +17,7 @@ public class TaskServer {
 
     public TaskServer(NetworkFactory factory) {
         this.protocol = factory.createProtocol(PORT);
-        this.handler = new TaskMessageHandler();
+        this.handler = factory.createTaskMessageHandler();
         protocol.setHandler(handler);
     }
 

@@ -60,8 +60,9 @@ public class MembershipService {
     private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
+            String message = "GET /join-request?"+ selfAddress + " HTTP/1.1\r\n";
 
-            String message = "join_request;" + selfAddress;
+            //String message = "join_request;" + selfAddress;
             protocol.send(message, inetAddress, seedAddress);
         } catch (Exception e){
             System.out.println("[Node " + seedAddress + "] Could not send join request.");
@@ -179,7 +180,7 @@ public class MembershipService {
                 } else {
                     // Nós comuns monitoram apenas o seed
                     int seedPort = config.getSeedAddress();
-                    if (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 20000) {
+                    if (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 30000) {
                         System.out.println("[FailureDetector" + selfAddress + "] Seed node " + seedPort + " caiu.");
                         lastHeartbeat.remove(config.getSeedAddress());
                         // Verifica se este node é o mais velho

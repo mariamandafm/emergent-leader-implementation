@@ -1,9 +1,13 @@
 package protocols;
 
+import components.Config;
+import components.Membership;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -99,5 +103,42 @@ public class UDPProtocol implements Protocol {
             }
         }
         return null;
+    }
+
+    @Override
+    public void sendHeartbeats(Config config) {
+        new Thread(() -> {
+            while (running) {
+                // Se forr seed envia heartbeat para todos os nodes
+                if (selfAddress == config.getSeedAddress()){
+                    for (Integer nodePort : config.getUpNodes()) {
+                        if (nodePort == selfAddress) continue;
+
+                        try {
+                            String message = "heartbeat;" + selfAddress;
+                            send(message, InetAddress.getByName("localhost"), nodePort);
+
+                        } catch (Exception e) {
+                            System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    try {
+                        String message = "heartbeat;" + selfAddress;
+                        byte[] data = message.getBytes();
+                        send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
+
+                    } catch (Exception e) {
+                        System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                    }
+                }
+
+                try {
+                    Thread.sleep(6000); // envia heartbeat a cada 3s
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
     }
 }

@@ -1,5 +1,7 @@
 package protocols;
 
+import components.Config;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -7,6 +9,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -102,5 +105,42 @@ public class TCPProtocol implements Protocol{
             }
         }
         return null;
+    }
+
+    @Override
+    public void sendHeartbeats(Config config) {
+        new Thread(() -> {
+            while (running) {
+                // Se forr seed envia heartbeat para todos os nodes
+                if (selfAddress == config.getSeedAddress()){
+                    for (Integer nodePort : config.getUpNodes()) {
+                        if (nodePort == selfAddress) continue;
+
+                        try {
+                            String message = "heartbeat;" + selfAddress;
+                            send(message, InetAddress.getByName("localhost"), nodePort);
+
+                        } catch (Exception e) {
+                            System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    try {
+                        String message = "heartbeat;" + selfAddress;
+                        byte[] data = message.getBytes();
+                        send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
+
+                    } catch (Exception e) {
+                        System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                    }
+                }
+
+                try {
+                    Thread.sleep(6000); // envia heartbeat a cada 3s
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
     }
 }

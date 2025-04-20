@@ -19,4 +19,9 @@ public class HTTPNetworkFactory implements NetworkFactory {
     public MessageHandler createGatewayMessageHandler(Config config) {
         return new HTTPGatewayMessageHandler(config);
     }
+
+    @Override
+    public MessageHandler createTaskMessageHandler() {
+        return new HTTPTaskMessageHandler();
+    }
 }

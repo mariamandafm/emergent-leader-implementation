@@ -1,8 +1,11 @@
 package protocols;
 
+import components.Config;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.List;
 import java.util.function.Predicate;
 
 public interface Protocol {
@@ -20,4 +23,6 @@ public interface Protocol {
     void stop();
 
     String waitForMessage(Predicate<String> condition, int timeoutMs);
+
+    void sendHeartbeats(Config config);
 }

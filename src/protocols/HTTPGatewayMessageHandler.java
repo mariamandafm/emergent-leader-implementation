@@ -69,13 +69,34 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
                 writer.println(originalMessage);
 
                 // Recebe resposta
-                BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                return reader.readLine(); // espera uma única linha como resposta
+                BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                return readHttpRequest(input); // espera uma única linha como resposta
             }
         } catch (SocketTimeoutException e) {
             return "ERROR: Timeout ao aguardar resposta do node";
         } catch (IOException e) {
             return "ERROR: Falha ao encaminhar requisição - " + e.getMessage();
         }
+    }
+
+    private String readHttpRequest(BufferedReader input) throws IOException {
+        StringBuilder request = new StringBuilder();
+        int contentLenght = 0;
+        String line;
+        while ((line = input.readLine()) != null){
+            if (line.trim().isEmpty()) break;
+            if (line.toLowerCase().startsWith("content-length")) {
+                contentLenght = Integer.parseInt(line.split(":")[1].trim());
+            }
+            request.append(line).append("\n");
+        }
+
+        request.append("\r\n");
+        char[] body = new char[contentLenght];
+        if (contentLenght > 0) {
+            input.read(body, 0, contentLenght);
+            request.append(body);
+        }
+        return request.toString();
     }
 }

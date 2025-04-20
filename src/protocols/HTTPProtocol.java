@@ -1,5 +1,7 @@
 package protocols;
 
+import components.Config;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -7,6 +9,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -38,34 +41,16 @@ public class HTTPProtocol implements Protocol{
                     Socket connection = socket.accept(); // Bloqueia e fica esperando uma conexão
                     BufferedReader input = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
-                    StringBuilder receivedMessage = new StringBuilder();
-                    int contentLenght = 0;
-                    String messageBody = "";
-                    //String receivedMessage = input.readLine();
-                    String line;
-                    while ((line = input.readLine()) != null){
-                        if (line.trim().isEmpty()) break;
-                        if (line.toLowerCase().startsWith("content-length")) {
-                            contentLenght = Integer.parseInt(line.split(":")[1].trim());
-                        }
-                        receivedMessage.append(line).append("\n");
-                    }
+                    String receivedMessage = readHttpRequest(input);
 
-                    if (contentLenght > 0) {
-                        char[] body = new char[contentLenght];
-                        input.read(body, 0, contentLenght);
-                        messageBody = new String(body);
-                    }
-                    System.out.println("Body: " + messageBody);
                     PrintWriter output = new PrintWriter(connection.getOutputStream(), true);
-                    System.out.println("[" + selfAddress + "]: "+ receivedMessage.toString());
-                    if (receivedMessage != null) {
-                        messageQueue.offer(receivedMessage.toString());
-                        String response = handler.handle(receivedMessage.toString());
-                        if (response != null && !response.trim().isEmpty()) {
-                            output.println(response);
-                            connection.close();
-                        }
+                    System.out.println("[" + selfAddress + "]: "+ receivedMessage);
+                    messageQueue.offer(receivedMessage);
+                    String response = handler.handle(receivedMessage);
+                    if (response != null && !response.trim().isEmpty()) {
+                        System.out.println("[" + selfAddress + "] Response: "+ response);
+                        output.println(response);
+                        connection.close();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -73,6 +58,27 @@ public class HTTPProtocol implements Protocol{
             }
         }).start();
 
+    }
+
+    private String readHttpRequest(BufferedReader input) throws IOException {
+        StringBuilder request = new StringBuilder();
+        int contentLenght = 0;
+        String line;
+        while ((line = input.readLine()) != null){
+            if (line.trim().isEmpty()) break;
+            if (line.toLowerCase().startsWith("content-length")) {
+                contentLenght = Integer.parseInt(line.split(":")[1].trim());
+            }
+            request.append(line).append("\n");
+        }
+
+        request.append("\r\n");
+        char[] body = new char[contentLenght];
+        if (contentLenght > 0) {
+            input.read(body, 0, contentLenght);
+            request.append(body);
+        }
+       return request.toString();
     }
 
     @Override
@@ -122,5 +128,53 @@ public class HTTPProtocol implements Protocol{
             }
         }
         return null;
+    }
+
+    private String createHttpMessage(String method, String route, String content){
+        StringBuilder request = new StringBuilder();
+        request.append(method.toUpperCase() + " " + route + " HTTP/1.1\r\n");
+        request.append("\r\n");
+        if (method.toUpperCase().equals("POST")){
+            request.append(content + "\r\n");
+        }
+        return request.toString();
+    }
+
+    @Override
+    public void sendHeartbeats(Config config) {
+        new Thread(() -> {
+            while (running) {
+                // Se forr seed envia heartbeat para todos os nodes
+                if (selfAddress == config.getSeedAddress()){
+                    for (Integer nodePort : config.getUpNodes()) {
+                        if (nodePort == selfAddress) continue;
+
+                        try {
+                            //String message = "heartbeat;" + selfAddress;
+                            String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
+                            send(message, InetAddress.getByName("localhost"), nodePort);
+
+                        } catch (Exception e) {
+                            System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    try {
+                        String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
+                        byte[] data = message.getBytes();
+                        send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
+
+                    } catch (Exception e) {
+                        System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
+                    }
+                }
+
+                try {
+                    Thread.sleep(6000); // envia heartbeat a cada 3s
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
     }
 }

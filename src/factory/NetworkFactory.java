@@ -11,4 +11,6 @@ public interface NetworkFactory {
     MessageHandler createMessageHandler(int port, MembershipService membershipService, Config config);
 
     MessageHandler createGatewayMessageHandler(Config config);
+
+    MessageHandler createTaskMessageHandler();
 }

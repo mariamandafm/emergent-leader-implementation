@@ -11,6 +11,7 @@ import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 public class HTTPMessageHandler implements MessageHandler{
@@ -44,6 +45,7 @@ public class HTTPMessageHandler implements MessageHandler{
             return null;  // Retorno null indica que não deve enviar resposta
         }
 
+
         String response = processMessage(message);
 
         // Se for uma mensagem de heartbeat, não responda
@@ -57,17 +59,24 @@ public class HTTPMessageHandler implements MessageHandler{
 
     private String processMessage(String message) {
         try {
-            StringTokenizer tokenizer = new StringTokenizer(message, ";");
-            String operation = tokenizer.nextToken();
-            String params = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
+//            StringTokenizer tokenizer = new StringTokenizer(message, ";");
+//            String operation = tokenizer.nextToken();
+//            String params = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
+            String[] lines = message.split("\n");
+            String messageType = lines[0];
+            StringTokenizer tokenizer = new StringTokenizer((messageType));
+            String httpMethod = tokenizer.nextToken();
+            String httpRoute = tokenizer.nextToken();
 
-            String version = "";
+            String[] actions = httpRoute.split("\\?");
+            String operation = actions[0];
+            String params = actions.length > 1 ? actions[1] : "";
 
             switch (operation) {
-                case "add":
-                case "read":
+                case "/add":
+                case "/read":
                     return forwardToTaskServer(message);
-                case "join_request":
+                case "/join-request":
                     // se for seed
                     if (port == config.getSeedAddress()){
                         int newNodeAddress = Integer.parseInt(params);
@@ -75,21 +84,21 @@ public class HTTPMessageHandler implements MessageHandler{
                         membershipService.handleNewJoin(newNodeAddress, config);
                         config.setUpNodes(membershipService.membership.getUpNodesAddress());
                         String updatedMembership = membershipService.membership.getSerializedMembership();
-                        return "accepted;" + updatedMembership;
+                        return "/accepted" + updatedMembership;
                     } else {
                         System.out.println("Apenas seed pode processar pedidos de join");
                     }
                     break;
-                case "membership_update":
-                    System.out.println("[ " + port + " ] Recebendo atualização de join ");
-                    version = tokenizer.nextToken();
-                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
-                    return "ack;";
-                case "accepted":
-                    version = tokenizer.nextToken();
-                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
-                    return "ack;";
-                case "heartbeat":
+//                case "/membership_update":
+//                    System.out.println("[ " + port + " ] Recebendo atualização de join ");
+//                    version = tokenizer.nextToken();
+//                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
+//                    return "ack;";
+//                case "/accepted":
+//                    version = tokenizer.nextToken();
+//                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
+//                    return "ack;";
+                case "/heartbeat":
                     int senderPort = Integer.parseInt(params);
                     membershipService.receiveHeartbeat(senderPort);
                     return "";
@@ -105,7 +114,7 @@ public class HTTPMessageHandler implements MessageHandler{
 
     private String forwardToTaskServer(String message) {
         try (Socket clientSocket = new Socket("localhost", 9005)) {
-            clientSocket.setSoTimeout(2000); // timeout de resposta
+            clientSocket.setSoTimeout(5000); // timeout de resposta
 
             // Enviar a mensagem
             PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -113,7 +122,7 @@ public class HTTPMessageHandler implements MessageHandler{
 
             // Receber a resposta
             BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            String reply = input.readLine();
+            String reply = readHttpRequest(input);
 
             if (reply == null) {
                 return "Erro: TaskServer fechou conexão sem responder";
@@ -127,5 +136,26 @@ public class HTTPMessageHandler implements MessageHandler{
         } catch (IOException e) {
             return "Erro ao comunicar com TaskServer: " + e.getMessage();
         }
+    }
+
+    private String readHttpRequest(BufferedReader input) throws IOException {
+        StringBuilder request = new StringBuilder();
+        int contentLenght = 0;
+        String line;
+        while ((line = input.readLine()) != null){
+            if (line.trim().isEmpty()) break;
+            if (line.toLowerCase().startsWith("content-length")) {
+                contentLenght = Integer.parseInt(line.split(":")[1].trim());
+            }
+            request.append(line).append("\n");
+        }
+
+        request.append("\r\n");
+        char[] body = new char[contentLenght];
+        if (contentLenght > 0) {
+            input.read(body, 0, contentLenght);
+            request.append(body);
+        }
+        return request.toString();
     }
 }

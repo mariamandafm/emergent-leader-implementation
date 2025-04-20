@@ -19,4 +19,9 @@ public class TCPNetworkFactory implements NetworkFactory {
     public MessageHandler createGatewayMessageHandler(Config config) {
         return new TCPGatewayMessageHandler(config);
     }
+
+    @Override
+    public MessageHandler createTaskMessageHandler() {
+        return new TaskMessageHandler();
+    }
 }

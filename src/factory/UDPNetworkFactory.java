@@ -19,4 +19,9 @@ public class UDPNetworkFactory implements NetworkFactory {
     public MessageHandler createGatewayMessageHandler(Config config) {
         return new UDPGatewayMessageHandler(config);
     }
+
+    @Override
+    public MessageHandler createTaskMessageHandler() {
+        return new TaskMessageHandler();
+    }
 }

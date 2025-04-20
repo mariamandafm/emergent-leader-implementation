@@ -39,47 +39,10 @@ public class Node {
         if (membershipService.join(config.getSeedAddress(), config)){
             System.out.println(port + " Iniciando protocolo UDP");
             protocol.start();
-            sendHeartbeats();
+            protocol.sendHeartbeats(config);
         } else {
             System.out.println("Não foi possivel se juntar ao cluster");
         }
-    }
-
-    private void sendHeartbeats() {
-        new Thread(() -> {
-            while (running) {
-                // Se forr seed envia heartbeat para todos os nodes
-                if (port == config.getSeedAddress()){
-                    for (Integer nodePort : config.getUpNodes()) {
-                        if (nodePort == port) continue;
-
-                        try {
-                            String message = "heartbeat;" + port;
-                            protocol.send(message, InetAddress.getByName("localhost"), nodePort);
-
-                        } catch (Exception e) {
-                            System.out.println("[Node " + port + "] Erro ao enviar heartbeat: " + e.getMessage());
-                        }
-                    }
-                } else {
-                    try {
-                        String message = "heartbeat;" + port;
-                        byte[] data = message.getBytes();
-                        protocol.send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
-
-                    } catch (Exception e) {
-                        System.out.println("[Node " + port + "] Erro ao enviar heartbeat: " + e.getMessage());
-                    }
-                }
-
-
-                try {
-                    Thread.sleep(6000); // envia heartbeat a cada 3s
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }).start();
     }
 
     public void stop() {
