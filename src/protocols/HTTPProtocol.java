@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.StringTokenizer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -83,16 +84,26 @@ public class HTTPProtocol implements Protocol{
 
     @Override
     public void send(String message, InetAddress address, int port) throws IOException {
+        StringTokenizer tokenizer = new StringTokenizer(message, ";");
+        String request = tokenizer.nextToken();
+        String params = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
+        String version = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
+        String httpMessage = createHttpMessage("GET", "/"+request + "?" + params+ "&"+version, null);
+
         try (Socket socket = new Socket(address, port);
              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            out.println(message);
-            // Opcional: ler resposta
-//            String response = in.readLine();
-//            if (response != null) {
-//                messageQueue.offer(response);
-//            }
+            out.println(httpMessage);
+
+            String receivedMessage = readHttpRequest(in);
+            if (receivedMessage != null) {
+                messageQueue.offer(receivedMessage);
+                String response = handler.handle(receivedMessage);
+                if (response != null && !response.trim().isEmpty()) {
+                    System.out.println("[" + selfAddress + "]: " + response);
+                }
+            }
         }
     }
 
@@ -152,7 +163,12 @@ public class HTTPProtocol implements Protocol{
                         try {
                             //String message = "heartbeat;" + selfAddress;
                             String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
-                            send(message, InetAddress.getByName("localhost"), nodePort);
+                            try (Socket socket = new Socket(InetAddress.getByName("localhost"), nodePort);
+                                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                                out.println(message);
+                            }
+                            //send(message, InetAddress.getByName("localhost"), nodePort);
 
                         } catch (Exception e) {
                             System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
@@ -161,8 +177,11 @@ public class HTTPProtocol implements Protocol{
                 } else {
                     try {
                         String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
-                        byte[] data = message.getBytes();
-                        send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
+                        try (Socket socket = new Socket(InetAddress.getByName("localhost"), config.getSeedAddress());
+                             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                            out.println(message);
+                        }
 
                     } catch (Exception e) {
                         System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());

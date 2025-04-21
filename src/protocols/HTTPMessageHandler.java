@@ -2,6 +2,7 @@ package protocols;
 
 import components.Config;
 import components.MembershipService;
+import utils.HttpStatus;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.StringTokenizer;
 
 public class HTTPMessageHandler implements MessageHandler{
@@ -59,57 +61,73 @@ public class HTTPMessageHandler implements MessageHandler{
 
     private String processMessage(String message) {
         try {
-//            StringTokenizer tokenizer = new StringTokenizer(message, ";");
-//            String operation = tokenizer.nextToken();
-//            String params = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
             String[] lines = message.split("\n");
-            String messageType = lines[0];
-            StringTokenizer tokenizer = new StringTokenizer((messageType));
-            String httpMethod = tokenizer.nextToken();
-            String httpRoute = tokenizer.nextToken();
+            String messageType = lines[0].trim(); // ex: "GET /add?x=1 HTTP/1.1" ou "HTTP/1.1 200 OK"
+            StringTokenizer tokenizer = new StringTokenizer(messageType);
 
-            String[] actions = httpRoute.split("\\?");
-            String operation = actions[0];
-            String params = actions.length > 1 ? actions[1] : "";
+            String operation = "";
+            String version = "";
+            String params = "";
+            String data = "";
+
+            if (isHttpResponse(messageType)) {
+                String statusCode = messageType.split(" ")[1];  // "200"
+
+                if (Objects.equals(statusCode, "202")){
+                    data = lines[lines.length-1];
+                    operation = "accepted";
+                    String [] infos = data.split(";");
+                    params = infos[0];
+                    version = infos[1];
+
+                }
+                System.out.println("Recendo response http: "+data);
+            } else {
+                // Processar como request
+                String httpMethod = tokenizer.nextToken();
+                String httpRoute = tokenizer.nextToken();
+
+                String[] actions = httpRoute.split("\\?", 2);
+                operation = actions[0];
+                params = actions.length > 1 ? actions[1] : "";
+
+                System.out.println("Requisição HTTP: método=" + httpMethod + " operação=" + operation + " params=" + params);
+            }
 
             switch (operation) {
                 case "/add":
                 case "/read":
                     return forwardToTaskServer(message);
-                case "/join-request":
+                case "/join_request":
                     // se for seed
                     if (port == config.getSeedAddress()){
-                        int newNodeAddress = Integer.parseInt(params);
+                        int newNodeAddress = Integer.parseInt(params.substring(0, params.length() - 1));
                         System.out.println("Processando join request de: " + newNodeAddress);
                         membershipService.handleNewJoin(newNodeAddress, config);
                         config.setUpNodes(membershipService.membership.getUpNodesAddress());
                         String updatedMembership = membershipService.membership.getSerializedMembership();
-                        return "/accepted" + updatedMembership;
+                        return createHttpResponse(202, updatedMembership);
                     } else {
-                        System.out.println("Apenas seed pode processar pedidos de join");
+                        return createHttpResponse(402,"Apenas seed pode processar pedidos de join");
                     }
-                    break;
-//                case "/membership_update":
-//                    System.out.println("[ " + port + " ] Recebendo atualização de join ");
-//                    version = tokenizer.nextToken();
-//                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
-//                    return "ack;";
-//                case "/accepted":
-//                    version = tokenizer.nextToken();
-//                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
-//                    return "ack;";
+                case "/membership_update":
+                    System.out.println("[ " + port + " ] Recebendo atualização de join ");
+                    String[] newMembership = params.split("&");
+                    membershipService.membership.deserializeMembershipAndUpdate(newMembership[0], newMembership[1]);
+                    return createHttpResponse(200, "ack");
+                case "accepted":
+                    membershipService.membership.deserializeMembershipAndUpdate(params, version);
+                    return createHttpResponse(200, "ack");
                 case "/heartbeat":
                     int senderPort = Integer.parseInt(params);
                     membershipService.receiveHeartbeat(senderPort);
-                    return "";
+                    return createHttpResponse(200, null);
                 default:
-                    System.out.println(port+ "ERROR: Operação inválida - " + operation);
-                    return "";
+                    return createHttpResponse(400, "Operação inválida - " + operation);
             }
         } catch (Exception e) {
-            return "Erro: " + e.getMessage();
+            return createHttpResponse(400, e.getMessage());
         }
-        return "";
     }
 
     private String forwardToTaskServer(String message) {
@@ -125,17 +143,34 @@ public class HTTPMessageHandler implements MessageHandler{
             String reply = readHttpRequest(input);
 
             if (reply == null) {
-                return "Erro: TaskServer fechou conexão sem responder";
+                return createHttpResponse(500,"TaskServer fechou conexão sem responder");
             }
-            //String reply = new String(responseBuffer, 0, read);
-            //String reply = "Resposta do servidor task";
             return reply;
 
         } catch (SocketTimeoutException e) {
-            return "Erro: TaskServer não respondeu (timeout)";
+            return createHttpResponse(500,"TaskServer não respondeu (timeout)");
         } catch (IOException e) {
-            return "Erro ao comunicar com TaskServer: " + e.getMessage();
+            return createHttpResponse(500,"Erro ao comunicar com TaskServer: " + e.getMessage());
         }
+    }
+
+    private boolean isHttpResponse(String messageTypeLine) {
+        return messageTypeLine.startsWith("HTTP/");
+    }
+
+    private String createHttpResponse(int statusCode, String content){
+        HttpStatus status = HttpStatus.fromCode(statusCode);
+        StringBuilder response = new StringBuilder();
+        response.append("HTTP/1.0 " + status.toString() + "\r\n");
+        response.append("Server: WebServer\r\n");
+        response.append("Content-Type: text/html\r\n");
+
+        if (content != null){
+            response.append("Content-Length: ").append(content.length()).append("\r\n");
+            response.append("\r\n");
+            response.append(content);
+        }
+        return response.toString();
     }
 
     private String readHttpRequest(BufferedReader input) throws IOException {
@@ -158,4 +193,38 @@ public class HTTPMessageHandler implements MessageHandler{
         }
         return request.toString();
     }
+
+    public String extractHttpResponseBody(String httpResponse) {
+        // Divide os headers do corpo usando a quebra dupla padrão (\r\n\r\n ou \n\n)
+        String[] parts = httpResponse.split("\\r?\\n\\r?\\n", 2);
+
+        if (parts.length < 2) {
+            return ""; // Nenhum corpo presente
+        }
+
+        String headers = parts[0];
+        String body = parts[1];
+
+        // Verifica se há Content-Length
+        int contentLength = -1;
+        for (String headerLine : headers.split("\\r?\\n")) {
+            if (headerLine.toLowerCase().startsWith("content-length")) {
+                try {
+                    contentLength = Integer.parseInt(headerLine.split(":")[1].trim());
+                } catch (NumberFormatException e) {
+                    contentLength = -1;
+                }
+                break;
+            }
+        }
+
+        // Se o Content-Length for válido e o corpo tiver o tamanho esperado, retorna o corpo correto
+        if (contentLength >= 0 && body.length() >= contentLength) {
+            return body.substring(0, contentLength);
+        }
+
+        // Caso contrário, retorna tudo o que tem como corpo
+        return body;
+    }
+
 }

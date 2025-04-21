@@ -55,7 +55,6 @@ public class TCPProtocol implements Protocol{
                 }
             }
         }).start();
-
     }
 
     @Override
@@ -66,10 +65,14 @@ public class TCPProtocol implements Protocol{
 
             out.println(message);
             // Opcional: ler resposta
-//            String response = in.readLine();
-//            if (response != null) {
-//                messageQueue.offer(response);
-//            }
+            String receivedMessage = in.readLine();
+            if (receivedMessage != null) {
+                messageQueue.offer(receivedMessage);
+                String response = handler.handle(receivedMessage);
+                if (response != null && !response.trim().isEmpty()) {
+                    System.out.println("[" + selfAddress + "]: " + response);
+                }
+            }
         }
     }
 

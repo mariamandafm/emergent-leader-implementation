@@ -39,7 +39,7 @@ public class Node {
         if (membershipService.join(config.getSeedAddress(), config)){
             System.out.println(port + " Iniciando protocolo UDP");
             protocol.start();
-            protocol.sendHeartbeats(config);
+            //protocol.sendHeartbeats(config);
         } else {
             System.out.println("Não foi possivel se juntar ao cluster");
         }

@@ -42,7 +42,6 @@ public class UDPProtocol implements Protocol {
                     byte[] receiveBuffer = new byte[1024];
                     DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
                     socket.receive(receivePacket);
-
                     String receivedMessage = new String(receivePacket.getData(), 0, receivePacket.getLength());
                     //System.out.println("[UDPProtocol " + selfAddress + "] Mensagem recebida: " + receivedMessage);
 

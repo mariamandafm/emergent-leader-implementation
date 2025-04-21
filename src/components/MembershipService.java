@@ -60,9 +60,9 @@ public class MembershipService {
     private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
-            String message = "GET /join-request?"+ selfAddress + " HTTP/1.1\r\n";
+            //String message = "GET /join-request?"+ selfAddress + " HTTP/1.1\r\n";
 
-            //String message = "join_request;" + selfAddress;
+            String message = "join_request;" + selfAddress;
             protocol.send(message, inetAddress, seedAddress);
         } catch (Exception e){
             System.out.println("[Node " + seedAddress + "] Could not send join request.");
@@ -70,7 +70,7 @@ public class MembershipService {
     }
 
     private void start(Config config) {
-        startFailureDetector(config);
+        //startFailureDetector(config);
     }
 
     public void handleNewJoin(int joinAddress, Config config) {
@@ -106,7 +106,6 @@ public class MembershipService {
         } else {
             var collector = 0;
             var acks = 0;
-            System.out.println("Membros existentes");
             for (Integer member : existingMembers){
                 sendMembershipUpdate(member);
             }
@@ -178,6 +177,7 @@ public class MembershipService {
                         }
                     }
                 } else {
+                    System.out.println(selfAddress + " " + membership.liveMembers);
                     // Nós comuns monitoram apenas o seed
                     int seedPort = config.getSeedAddress();
                     if (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 30000) {

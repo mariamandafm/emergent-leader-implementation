@@ -29,23 +29,26 @@ public class HTTPTaskMessageHandler implements MessageHandler{
 
             switch (operation) {
                 case "/add":
-                    if (params.isEmpty()) {
-                        return "[TaskServer] Erro: Nenhuma tarefa especificada";
+                    if (!httpMethod.equals("POST")){
+                        return createHttpResponse(405,"Métodos suportados: POST.");
                     }
-                    tasksApp.addTask(params);
-                    return "[TaskServer] Tarefa adicionada: " + params;
-
+                    String data = lines[lines.length-1];
+                    if (data.isEmpty()) {
+                        return createHttpResponse(400,"Nenhuma tarefa especificada");
+                    }
+                    tasksApp.addTask(data);
+                    return createHttpResponse(200,"Tarefa adicionada: " + data);
                 case "/read":
                     if (!httpMethod.equals("GET")){
-                        return "[TaskServer] ERROR: Método não suportado";
+                        return createHttpResponse(405,"Métodos suportados: GET.");
                     }
                     return createHttpResponse(200, tasksApp.getTasks());
                 default:
-                    System.out.println("[TaskServer] Erro: Operação inválida - " + operation);
-                    return "";
+                    return createHttpResponse(400,"Operação inválida");
             }
         } catch (Exception e) {
-            return "[TaskServer] Erro: " + e.getMessage();
+            return createHttpResponse(400, e.getMessage());
+            //return "[TaskServer] Erro: " + e.getMessage();
         }
     }
 
