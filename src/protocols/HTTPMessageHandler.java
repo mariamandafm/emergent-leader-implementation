@@ -47,7 +47,6 @@ public class HTTPMessageHandler implements MessageHandler{
             return null;  // Retorno null indica que não deve enviar resposta
         }
 
-
         String response = processMessage(message);
 
         // Se for uma mensagem de heartbeat, não responda
@@ -81,7 +80,9 @@ public class HTTPMessageHandler implements MessageHandler{
                     version = infos[1];
 
                 }
-                System.out.println("Recendo response http: "+data);
+                else if (Objects.equals(statusCode, "200")){
+                    return "";
+                }
             } else {
                 // Processar como request
                 String httpMethod = tokenizer.nextToken();
@@ -90,8 +91,6 @@ public class HTTPMessageHandler implements MessageHandler{
                 String[] actions = httpRoute.split("\\?", 2);
                 operation = actions[0];
                 params = actions.length > 1 ? actions[1] : "";
-
-                System.out.println("Requisição HTTP: método=" + httpMethod + " operação=" + operation + " params=" + params);
             }
 
             switch (operation) {

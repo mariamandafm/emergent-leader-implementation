@@ -30,11 +30,11 @@ public class EmergentLeader {
         nodes.put(9001, node1);
         System.out.println("Node 9001 iniciado");
 
-//        System.out.println("Iniciando node 9002");
-//        Node node2 = new Node(factory, config, 9002);
-//        node2.start();
-//        nodes.put(9002, node2);
-//        System.out.println("Node 9002 iniciado");
+        System.out.println("Iniciando node 9002");
+        Node node2 = new Node(factory, config, 9002);
+        node2.start();
+        nodes.put(9002, node2);
+        System.out.println("Node 9002 iniciado");
 //
 //        System.out.println("Iniciando node 9003");
 //        Node node3 = new Node(config, 9003);

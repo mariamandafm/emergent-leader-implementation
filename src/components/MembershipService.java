@@ -60,7 +60,6 @@ public class MembershipService {
     private void sendJoinRequest(int seedAddress) {
         try{
             InetAddress inetAddress = InetAddress.getByName("localhost");
-            //String message = "GET /join-request?"+ selfAddress + " HTTP/1.1\r\n";
 
             String message = "join_request;" + selfAddress;
             protocol.send(message, inetAddress, seedAddress);
@@ -70,7 +69,7 @@ public class MembershipService {
     }
 
     private void start(Config config) {
-        //startFailureDetector(config);
+        startFailureDetector(config);
     }
 
     public void handleNewJoin(int joinAddress, Config config) {
@@ -111,14 +110,14 @@ public class MembershipService {
             }
             while (collector < members){
                 String responseMessage = protocol.waitForMessage(
-                        msg -> msg.startsWith("ack;"), 3000
+                        msg -> msg.contains("ack"), 3000
                 );
 
                 if (responseMessage != null) {
                     StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
                     String response = tokenizer.nextToken();
                     collector++;
-                    if ("ack".equals(response)) {
+                    if (response.contains("ack")) {
                         acks++;
                     }
                 } else {
@@ -177,10 +176,9 @@ public class MembershipService {
                         }
                     }
                 } else {
-                    System.out.println(selfAddress + " " + membership.liveMembers);
                     // Nós comuns monitoram apenas o seed
                     int seedPort = config.getSeedAddress();
-                    if (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 30000) {
+                    if (!lastHeartbeat.isEmpty() & (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 40000)) {
                         System.out.println("[FailureDetector" + selfAddress + "] Seed node " + seedPort + " caiu.");
                         lastHeartbeat.remove(config.getSeedAddress());
                         // Verifica se este node é o mais velho
@@ -193,7 +191,7 @@ public class MembershipService {
                     }
                 }
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(20000);
                 } catch (InterruptedException ignored) {}
             }
         });

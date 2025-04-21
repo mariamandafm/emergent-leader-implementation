@@ -32,14 +32,14 @@ public class Node {
     public void start() throws SocketException {
         this.protocol = factory.createProtocol(port);
         this.membershipService = new MembershipService(port, protocol);
-        //this.handler = new TCPMessageHandler(port, membershipService, config);
+        this.handler = new TCPMessageHandler(port, membershipService, config);
         this.handler = factory.createMessageHandler(port, membershipService, config);
         protocol.setHandler(handler);
 
         if (membershipService.join(config.getSeedAddress(), config)){
             System.out.println(port + " Iniciando protocolo UDP");
             protocol.start();
-            //protocol.sendHeartbeats(config);
+            protocol.sendHeartbeats(config);
         } else {
             System.out.println("Não foi possivel se juntar ao cluster");
         }

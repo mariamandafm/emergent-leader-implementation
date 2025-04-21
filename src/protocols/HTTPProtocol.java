@@ -45,11 +45,10 @@ public class HTTPProtocol implements Protocol{
                     String receivedMessage = readHttpRequest(input);
 
                     PrintWriter output = new PrintWriter(connection.getOutputStream(), true);
-                    System.out.println("[" + selfAddress + "]: "+ receivedMessage);
-                    messageQueue.offer(receivedMessage);
+                   // System.out.println("[" + selfAddress + "]: "+ receivedMessage);
                     String response = handler.handle(receivedMessage);
                     if (response != null && !response.trim().isEmpty()) {
-                        System.out.println("[" + selfAddress + "] Response: "+ response);
+                        //System.out.println("[" + selfAddress + "] Response: "+ response);
                         output.println(response);
                         connection.close();
                     }
@@ -82,6 +81,10 @@ public class HTTPProtocol implements Protocol{
        return request.toString();
     }
 
+    private boolean isHttpResponse(String messageTypeLine) {
+        return messageTypeLine.startsWith("HTTP/");
+    }
+
     @Override
     public void send(String message, InetAddress address, int port) throws IOException {
         StringTokenizer tokenizer = new StringTokenizer(message, ";");
@@ -98,7 +101,9 @@ public class HTTPProtocol implements Protocol{
 
             String receivedMessage = readHttpRequest(in);
             if (receivedMessage != null) {
-                messageQueue.offer(receivedMessage);
+                if (isHttpResponse(receivedMessage)){
+                    messageQueue.offer(receivedMessage);
+                }
                 String response = handler.handle(receivedMessage);
                 if (response != null && !response.trim().isEmpty()) {
                     System.out.println("[" + selfAddress + "]: " + response);
@@ -155,20 +160,18 @@ public class HTTPProtocol implements Protocol{
     public void sendHeartbeats(Config config) {
         new Thread(() -> {
             while (running) {
-                // Se forr seed envia heartbeat para todos os nodes
+                // Se for seed envia heartbeat para todos os nodes
                 if (selfAddress == config.getSeedAddress()){
                     for (Integer nodePort : config.getUpNodes()) {
                         if (nodePort == selfAddress) continue;
 
                         try {
-                            //String message = "heartbeat;" + selfAddress;
                             String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
                             try (Socket socket = new Socket(InetAddress.getByName("localhost"), nodePort);
                                  PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                                  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
                                 out.println(message);
                             }
-                            //send(message, InetAddress.getByName("localhost"), nodePort);
 
                         } catch (Exception e) {
                             System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());
@@ -189,7 +192,7 @@ public class HTTPProtocol implements Protocol{
                 }
 
                 try {
-                    Thread.sleep(6000); // envia heartbeat a cada 3s
+                    Thread.sleep(3000); // envia heartbeat a cada 3s
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
