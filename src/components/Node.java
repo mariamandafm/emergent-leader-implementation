@@ -37,7 +37,6 @@ public class Node {
         protocol.setHandler(handler);
 
         if (membershipService.join(config.getSeedAddress(), config)){
-            System.out.println(port + " Iniciando protocolo UDP");
             protocol.start();
             protocol.sendHeartbeats(config);
         } else {

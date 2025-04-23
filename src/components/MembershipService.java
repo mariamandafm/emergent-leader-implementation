@@ -25,16 +25,12 @@ public class MembershipService {
     }
 
     public boolean join(int seedAddress, Config config){
-        var maxJoinAttempts = 5;
-
         String joinResult = joinAttempt(seedAddress, config);
         if (joinResult.equals("accepted")) {
-            System.out.println(selfAddress + " Aceito. Iniciando servidor.");
             start(config);
             return true;
         }
         return false;
-        //throw new JoinFailedException("Unable to join the cluster after " + maxJoinAttempts + " attempts");
     }
 
     private String joinAttempt(int seedAddress, Config config) {
@@ -100,7 +96,7 @@ public class MembershipService {
         }
         var members = existingMembers.size();
         if (members == 0){
-            System.out.println("Only seed in the cluster, no need for broacast");
+            System.out.println("Apenas o seed está no cluster, não há necessidade de broadcast");
             return true;
         } else {
             var collector = 0;
@@ -127,7 +123,7 @@ public class MembershipService {
             }
 
             if (acks == members) {
-                System.out.println("Ack received from all members");
+                System.out.println("Ack recebido de todos os membros");
                 return true;
             }
         }
@@ -142,7 +138,7 @@ public class MembershipService {
             String message = "membership_update;" + membershipMessage;
             protocol.send(message, inetAddress, memberAddress);
         } catch (Exception e){
-            System.out.println("Could not send membership update");
+            System.out.println("Não foi possível mandar atualização do membership");
         }
     }
 

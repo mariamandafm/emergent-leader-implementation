@@ -88,7 +88,7 @@ public class UDPMessageHandler implements MessageHandler{
                     membershipService.receiveHeartbeat(senderPort);
                     return "";
                 default:
-                    System.out.println(port+ "Erro: Operação inválida - " + operation);
+                    //System.out.println(port+ "Erro: Operação inválida - " + operation);
                     return "";
             }
         } catch (Exception e) {
@@ -101,13 +101,11 @@ public class UDPMessageHandler implements MessageHandler{
         try {
             InetAddress nodeAddress = InetAddress.getByName("localhost");
 
-            // Envia a mensagem
             byte[] sendBuffer = message.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(
                     sendBuffer, sendBuffer.length, nodeAddress, 9005);
             socket.send(sendPacket);
 
-            // Recebe a resposta
             byte[] receiveData = new byte[2048];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
             socket.setSoTimeout(2000);  // timeout de resposta

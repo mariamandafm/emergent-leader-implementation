@@ -11,11 +11,7 @@ public class Gateway {
     private final Config config;
     private final Protocol protocol;
     private boolean running = true;
-
     private MessageHandler handler;
-
-    // Guarda informações do cliente para enviar resposta depois
-    private final ConcurrentHashMap<String, ClientInfo> clientMap = new ConcurrentHashMap<>();
 
     public Gateway(NetworkFactory factory, Config config) {
         this.config = config;
@@ -32,27 +28,5 @@ public class Gateway {
     public void stop() {
         running = false;
         protocol.stop();
-    }
-
-    private String generateClientId(String base) {
-        return String.valueOf(base.hashCode()); // Simples exemplo
-    }
-
-    private static class ClientInfo {
-        public final Thread thread;
-        public final InetAddress address;
-        public final int port;
-
-        public ClientInfo(Thread thread, String id) {
-            this.thread = thread;
-            this.address = null; // Você precisa preencher com o endereço original do cliente
-            this.port = -1;
-        }
-
-        public ClientInfo(InetAddress address, int port) {
-            this.thread = null;
-            this.address = address;
-            this.port = port;
-        }
     }
 }

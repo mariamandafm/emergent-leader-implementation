@@ -29,7 +29,6 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
 
         String operation = tokenizer.nextToken();
 
-        // Você pode ignorar certos tipos de mensagens se quiser, como heartbeat:
         if (operation.equals("heartbeat")) {
             return null;
         }
@@ -59,18 +58,15 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
             int nodePort = allNodes.get(rand.nextInt(allNodes.size()));
             InetAddress nodeAddress = InetAddress.getByName("localhost");
 
-            // Abre conexão TCP com o node
             try (Socket clientSocket = new Socket(nodeAddress, nodePort)) {
-                clientSocket.setSoTimeout(5000); // Timeout de 5 segundos
+                clientSocket.setSoTimeout(5000);
 
-                // Envia mensagem
                 OutputStream output = clientSocket.getOutputStream();
                 PrintWriter writer = new PrintWriter(output, true);
                 writer.println(originalMessage);
 
-                // Recebe resposta
                 BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                return readHttpRequest(input); // espera uma única linha como resposta
+                return readHttpRequest(input);
             }
         } catch (SocketTimeoutException e) {
             return "ERROR: Timeout ao aguardar resposta do node";

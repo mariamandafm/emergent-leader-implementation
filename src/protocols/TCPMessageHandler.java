@@ -101,19 +101,15 @@ public class TCPMessageHandler implements MessageHandler{
         try (Socket clientSocket = new Socket("localhost", 9005)) {
             clientSocket.setSoTimeout(2000); // timeout de resposta
 
-            // Enviar a mensagem
             PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
             output.println(message);
 
-            // Receber a resposta
             BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String reply = input.readLine();
 
             if (reply == null) {
                 return "Erro: TaskServer fechou conexão sem responder";
             }
-            //String reply = new String(responseBuffer, 0, read);
-            //String reply = "Resposta do servidor task";
             return reply;
 
         } catch (SocketTimeoutException e) {

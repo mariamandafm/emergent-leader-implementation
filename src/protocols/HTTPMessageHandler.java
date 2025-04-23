@@ -61,7 +61,7 @@ public class HTTPMessageHandler implements MessageHandler{
     private String processMessage(String message) {
         try {
             String[] lines = message.split("\n");
-            String messageType = lines[0].trim(); // ex: "GET /add?x=1 HTTP/1.1" ou "HTTP/1.1 200 OK"
+            String messageType = lines[0].trim();
             StringTokenizer tokenizer = new StringTokenizer(messageType);
 
             String operation = "";
@@ -133,11 +133,9 @@ public class HTTPMessageHandler implements MessageHandler{
         try (Socket clientSocket = new Socket("localhost", 9005)) {
             clientSocket.setSoTimeout(5000); // timeout de resposta
 
-            // Enviar a mensagem
             PrintWriter output = new PrintWriter(clientSocket.getOutputStream(), true);
             output.println(message);
 
-            // Receber a resposta
             BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String reply = readHttpRequest(input);
 
@@ -198,13 +196,12 @@ public class HTTPMessageHandler implements MessageHandler{
         String[] parts = httpResponse.split("\\r?\\n\\r?\\n", 2);
 
         if (parts.length < 2) {
-            return ""; // Nenhum corpo presente
+            return "";
         }
 
         String headers = parts[0];
         String body = parts[1];
 
-        // Verifica se há Content-Length
         int contentLength = -1;
         for (String headerLine : headers.split("\\r?\\n")) {
             if (headerLine.toLowerCase().startsWith("content-length")) {
@@ -217,12 +214,10 @@ public class HTTPMessageHandler implements MessageHandler{
             }
         }
 
-        // Se o Content-Length for válido e o corpo tiver o tamanho esperado, retorna o corpo correto
         if (contentLength >= 0 && body.length() >= contentLength) {
             return body.substring(0, contentLength);
         }
 
-        // Caso contrário, retorna tudo o que tem como corpo
         return body;
     }
 

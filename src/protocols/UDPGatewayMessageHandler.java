@@ -28,7 +28,6 @@ public class UDPGatewayMessageHandler implements MessageHandler {
 
         String operation = tokenizer.nextToken();
 
-        // Você pode ignorar certos tipos de mensagens se quiser, como heartbeat:
         if (operation.equals("heartbeat")) {
             return null;
         }
@@ -58,15 +57,15 @@ public class UDPGatewayMessageHandler implements MessageHandler {
             Random rand = new Random();
             int nodePort = allNodes.get(rand.nextInt(allNodes.size()));
 
-            //System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
-            //        operation, nodePort);
+//            System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
+//                    operation, nodePort);
 
             byte[] sendBuffer = originalMessage.getBytes();
             DatagramPacket sendPacket = new DatagramPacket(
                     sendBuffer, sendBuffer.length, nodeAddress, nodePort);
             clientSocket.send(sendPacket);
 
-            clientSocket.setSoTimeout(5000); // 5 segundos de timeout
+            clientSocket.setSoTimeout(5000);
             byte[] receiveBuffer = new byte[1024];
             DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
 

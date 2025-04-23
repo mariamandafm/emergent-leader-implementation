@@ -1,5 +1,7 @@
-package components;
-
+import components.Config;
+import components.Gateway;
+import components.Node;
+import components.TaskServer;
 import factory.HTTPNetworkFactory;
 import factory.NetworkFactory;
 import factory.TCPNetworkFactory;
@@ -14,7 +16,7 @@ public class EmergentLeader {
     public static void main(String[] args) throws InterruptedException, SocketException {
         Config config = new Config(9001);
 
-        NetworkFactory factory = new HTTPNetworkFactory();
+        NetworkFactory factory = new UDPNetworkFactory();
 
         Gateway gateway = new Gateway(factory, config);
         gateway.start();
@@ -65,8 +67,6 @@ public class EmergentLeader {
                     } else {
                         Node node = new Node(factory, config, startPort);
                         node.start();
-
-                        // TODO: Modificar isso, pois o seed node que deve deifinir a lista de nodes ativos
                         nodes.put(startPort, node);
                         System.out.println("Node " + startPort + " iniciado.");
                     }
@@ -80,7 +80,7 @@ public class EmergentLeader {
                     int stopPort = Integer.parseInt(parts[1]);
                     Node nodeToStop = nodes.remove(stopPort);
                     if (nodeToStop != null) {
-                        nodeToStop.stop();  // Você precisa implementar isso
+                        nodeToStop.stop();
                         System.out.println("Node " + stopPort + " parado.");
                     } else {
                         System.out.println("Node " + stopPort + " não está rodando.");
