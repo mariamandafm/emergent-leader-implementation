@@ -4,6 +4,7 @@ import components.Config;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.StringTokenizer;
@@ -50,7 +51,8 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
         List<Integer> allNodes = config.getUpNodes();
 
         if (allNodes.isEmpty()) {
-            return "ERROR: Nenhum node disponível";
+            System.out.println(allNodes);
+            return "ERROR: Nenhum node disponível aaaa";
         }
 
         try {
