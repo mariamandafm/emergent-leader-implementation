@@ -39,7 +39,7 @@ public class Node {
 
         if (membershipService.join(config.getSeedAddress(), config)) {
             protocol.start();
-            protocol.sendHeartbeats(config);
+            protocol.sendHeartbeats(membershipService.membership);
         } else {
             System.out.println("Não foi possível se juntar ao cluster");
         }

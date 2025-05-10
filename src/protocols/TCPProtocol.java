@@ -1,6 +1,7 @@
 package protocols;
 
 import components.Config;
+import components.Membership;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -111,12 +112,13 @@ public class TCPProtocol implements Protocol{
     }
 
     @Override
-    public void sendHeartbeats(Config config) {
+    public void sendHeartbeats(Membership membership) {
         new Thread(() -> {
             while (running) {
+                int seedAddress = 9001;
                 // Se forr seed envia heartbeat para todos os nodes
-                if (selfAddress == config.getSeedAddress()){
-                    for (Integer nodePort : config.getUpNodes()) {
+                if (selfAddress == seedAddress){
+                    for (Integer nodePort : membership.getUpNodesAddress()) {
                         if (nodePort == selfAddress) continue;
 
                         try {
@@ -131,7 +133,7 @@ public class TCPProtocol implements Protocol{
                     try {
                         String message = "heartbeat;" + selfAddress;
                         byte[] data = message.getBytes();
-                        send(message, InetAddress.getByName("localhost"), config.getSeedAddress());
+                        send(message, InetAddress.getByName("localhost"), seedAddress);
 
                     } catch (Exception e) {
                         System.out.println("[Node " + selfAddress + "] Erro ao enviar heartbeat: " + e.getMessage());

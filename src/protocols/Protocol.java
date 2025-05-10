@@ -1,6 +1,8 @@
 package protocols;
 
 import components.Config;
+import components.Membership;
+import components.MembershipService;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -24,5 +26,5 @@ public interface Protocol {
 
     String waitForMessage(Predicate<String> condition, int timeoutMs);
 
-    void sendHeartbeats(Config config);
+    void sendHeartbeats(Membership membership);
 }

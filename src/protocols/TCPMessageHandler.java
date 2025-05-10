@@ -66,7 +66,7 @@ public class TCPMessageHandler implements MessageHandler{
                     if (port == config.getSeedAddress()){
                         int newNodeAddress = Integer.parseInt(params);
                         System.out.println("Processando join request de: " + newNodeAddress);
-                        membershipService.handleNewJoin(newNodeAddress, config);
+                        membershipService.handleNewJoin(newNodeAddress);
                         config.setUpNodes(membershipService.membership.getUpNodesAddress());
                         String updatedMembership = membershipService.membership.getSerializedMembership();
                         return "accepted;" + updatedMembership;

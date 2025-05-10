@@ -27,7 +27,7 @@ public class MembershipService {
     public boolean join(int seedAddress, Config config){
         String joinResult = joinAttempt(seedAddress, config);
         if (joinResult.equals("accepted")) {
-            start(config);
+            start();
             return true;
         }
         return false;
@@ -38,7 +38,6 @@ public class MembershipService {
             System.out.println("[" + selfAddress + "] Entrando como seed");
             updateMembership(new Membership(1, Arrays.asList(new Member(selfAddress, 1))));
             membership.setSeedAddress(selfAddress);
-            config.setUpNodes(membership.getUpNodesAddress());
             return "accepted";
         }
 
@@ -64,11 +63,11 @@ public class MembershipService {
         }
     }
 
-    private void start(Config config) {
-        startFailureDetector(config);
+    private void start() {
+        startFailureDetector();
     }
 
-    public void handleNewJoin(int joinAddress, Config config) {
+    public void handleNewJoin(int joinAddress) {
         if (membership.contains(joinAddress)) {
             System.out.println("Node " + joinAddress + " já está no cluster. Ignorando.");
             return;
@@ -77,8 +76,6 @@ public class MembershipService {
         List<Member> existingMembers = membership.getLiveMembers();
 
         System.out.println("[ " + selfAddress + " ] Enviando broadcast de join request");
-        config.setUpNodes(membership.getUpNodesAddress());
-        // Envia uma cópia da lista de nodes ativos
         List<Integer> members = new ArrayList<>(membership.getUpNodesAddress());
         broadcastMembershipUpdate(members, joinAddress);
     }
@@ -86,11 +83,10 @@ public class MembershipService {
     // Seed node envia uma mensagem para todos os nodes quando um novo membro entra no cluster
     // Os nodes envian um ack para confirmar o recebimento.
     private boolean broadcastMembershipUpdate(List<Integer> existingMembers, int joinAddress) {
-//
-        //remove o seed e o novo node, pois eles não precisam receber o novo
+        existingMembers.add(9000);
+
         existingMembers.remove(Integer.valueOf(selfAddress));
 
-        // para casos em que há o join
         if (joinAddress > 0){
             existingMembers.remove(Integer.valueOf(joinAddress));
         }
@@ -99,36 +95,37 @@ public class MembershipService {
             System.out.println("Apenas o seed está no cluster, não há necessidade de broadcast");
             return true;
         } else {
-            var collector = 0;
-            var acks = 0;
+//            var collector = 0;
+//            var acks = 0;
             for (Integer member : existingMembers){
                 sendMembershipUpdate(member);
             }
-            while (collector < members){
-                String responseMessage = protocol.waitForMessage(
-                        msg -> msg.contains("ack"), 3000
-                );
-
-                if (responseMessage != null) {
-                    StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
-                    String response = tokenizer.nextToken();
-                    collector++;
-                    if (response.contains("ack")) {
-                        acks++;
-                    }
-                } else {
-                    System.out.println("Timeout esperando ack de algum membro");
-                    collector++;
-                }
-            }
-
-            if (acks == members) {
-                System.out.println("Ack recebido de todos os membros");
-                return true;
-            }
+//            while (collector < members){
+//                String responseMessage = protocol.waitForMessage(
+//                        msg -> msg.contains("ack"), 3000
+//                );
+//
+//                if (responseMessage != null) {
+//                    StringTokenizer tokenizer = new StringTokenizer(responseMessage, ";");
+//                    String response = tokenizer.nextToken();
+//                    collector++;
+//                    if (response.contains("ack")) {
+//                        acks++;
+//                    }
+//                } else {
+//                    System.out.println("Timeout esperando ack de algum membro");
+//                    collector++;
+//                }
+//            }
+//
+//            if (acks == members) {
+//                System.out.println("Ack recebido de todos os membros");
+//
+//            }
+            return true;
         }
 
-        return false;
+        //return false;
     }
 
     private void sendMembershipUpdate(int memberAddress) {
@@ -151,7 +148,7 @@ public class MembershipService {
         lastHeartbeat.put(port, System.currentTimeMillis());
     }
 
-    private void startFailureDetector(Config config) {
+    private void startFailureDetector() {
         this.failureDetectorRunning = true;
         failureDetectorThread = new Thread(() -> {
             boolean isLeader = selfAddress == membership.getSeedAddress();
@@ -164,25 +161,21 @@ public class MembershipService {
                     for (Integer nodePort : new HashSet<>(lastHeartbeat.keySet())) {
                         if (now - lastHeartbeat.getOrDefault(nodePort, 0L) > 20000) {
                             System.out.println("[FailureDetector " + selfAddress +  "] Node " + nodePort + " não respondeu. Removendo do cluster.");
-                            config.getUpNodes().remove(nodePort);
                             lastHeartbeat.remove(nodePort);
                             membership = membership.removeMember(nodePort);
                             broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
-                            config.setUpNodes(membership.getUpNodesAddress());
                         }
                     }
                 } else {
-                    // Nós comuns monitoram apenas o seed
-                    int seedPort = config.getSeedAddress();
+                    int seedPort = membership.getSeedAddress();
                     if (!lastHeartbeat.isEmpty() & (now - lastHeartbeat.getOrDefault(seedPort, 0L) > 40000)) {
                         System.out.println("[FailureDetector" + selfAddress + "] Seed node " + seedPort + " caiu.");
-                        lastHeartbeat.remove(config.getSeedAddress());
-                        // Verifica se este node é o mais velho
+                        lastHeartbeat.remove(seedPort);
                         Optional<Member> oldestMember = membership.getSecondOldestMember();
                         if (oldestMember.isPresent() && oldestMember.get().getPort() == selfAddress) {
                             System.out.println("[LeaderElection] Node " + selfAddress + " é o mais velho. Assumindo como novo seed.");
                             isLeader = true;
-                            takeLeadership(config);
+                            takeLeadership(seedPort);
                         }
                     }
                 }
@@ -194,14 +187,11 @@ public class MembershipService {
         failureDetectorThread.start();
     }
 
-    private void takeLeadership(Config config){
+    private void takeLeadership(int seedPort){
         System.out.println("TOMANDO LIDERANÇA");
-        membership = membership.removeMember(config.getSeedAddress());
+        membership = membership.removeMember(seedPort);
         membership.seedAddress = selfAddress; // Define-se como novo seed
 
-        //atualizar config
-        config.setUpNodes(membership.getUpNodesAddress());
-        config.setSeedAddress(selfAddress);
 
         broadcastMembershipUpdate(membership.getUpNodesAddress(), 0);
     }

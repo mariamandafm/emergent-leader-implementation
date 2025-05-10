@@ -1,6 +1,8 @@
 package protocols;
 
 import components.Config;
+import components.Membership;
+import components.MembershipService;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -157,12 +159,14 @@ public class HTTPProtocol implements Protocol{
     }
 
     @Override
-    public void sendHeartbeats(Config config) {
+    public void sendHeartbeats(Membership membership) {
         new Thread(() -> {
             while (running) {
+
+                int seedAddress = 9001;
                 // Se for seed envia heartbeat para todos os nodes
-                if (selfAddress == config.getSeedAddress()){
-                    for (Integer nodePort : config.getUpNodes()) {
+                if (selfAddress == seedAddress){
+                    for (Integer nodePort : membership.getUpNodesAddress()) {
                         if (nodePort == selfAddress) continue;
 
                         try {
@@ -180,7 +184,7 @@ public class HTTPProtocol implements Protocol{
                 } else {
                     try {
                         String message = createHttpMessage("GET", "/heartbeat?"+selfAddress, null);
-                        try (Socket socket = new Socket(InetAddress.getByName("localhost"), config.getSeedAddress());
+                        try (Socket socket = new Socket(InetAddress.getByName("localhost"), seedAddress);
                              PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
                              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
                             out.println(message);

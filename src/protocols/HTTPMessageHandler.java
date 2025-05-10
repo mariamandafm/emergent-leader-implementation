@@ -102,7 +102,7 @@ public class HTTPMessageHandler implements MessageHandler{
                     if (port == config.getSeedAddress()){
                         int newNodeAddress = Integer.parseInt(params.substring(0, params.length() - 1));
                         System.out.println("Processando join request de: " + newNodeAddress);
-                        membershipService.handleNewJoin(newNodeAddress, config);
+                        membershipService.handleNewJoin(newNodeAddress);
                         config.setUpNodes(membershipService.membership.getUpNodesAddress());
                         String updatedMembership = membershipService.membership.getSerializedMembership();
                         return createHttpResponse(202, updatedMembership);

@@ -4,10 +4,8 @@ import components.Config;
 
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.StringTokenizer;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class HTTPGatewayMessageHandler implements MessageHandler {
     private final Config config;
@@ -25,13 +23,19 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
             return null;
         }
 
-        StringTokenizer tokenizer = new StringTokenizer(message, ";");
-        if (!tokenizer.hasMoreTokens()) return "ERROR: Mensagem malformada";
+        StringTokenizer tokenizer = new StringTokenizer(message);
 
-        String operation = tokenizer.nextToken();
+        // Processar como request
+        String httpMethod = tokenizer.nextToken();
+        String httpRoute = tokenizer.nextToken();
 
-        if (operation.equals("heartbeat")) {
-            return null;
+        String[] actions = httpRoute.split("\\?", 2);
+        String operation = actions[0];
+        String params = actions.length > 1 ? actions[1] : "";
+
+        if (operation.equals("/membership_update")) {
+            config.setUpNodes(extractPorts(params));
+            System.out.println("ok");
         }
 
         return forwardToNodeAndGetResponse(operation, message);
@@ -59,6 +63,9 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
             Random rand = new Random();
             int nodePort = allNodes.get(rand.nextInt(allNodes.size()));
             InetAddress nodeAddress = InetAddress.getByName("localhost");
+
+            System.out.printf("[Gateway] Encaminhando requisição %s para %s%n",
+                    operation, nodePort);
 
             try (Socket clientSocket = new Socket(nodeAddress, nodePort)) {
                 clientSocket.setSoTimeout(5000);
@@ -97,4 +104,28 @@ public class HTTPGatewayMessageHandler implements MessageHandler {
         }
         return request.toString();
     }
+
+    private static List<Integer> extractPorts(String nodesUpdate) {
+        if (nodesUpdate == null || nodesUpdate.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            // Remove a parte após & se existir
+            String portsPart = nodesUpdate.split("&")[0];
+
+            return Arrays.stream(portsPart.split(","))
+                    .map(entry -> entry.split(":")[0])  // Pega a parte antes do :
+                    .map(String::trim)
+                    .filter(portStr -> !portStr.isEmpty())
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            System.err.println("Erro ao processar string de nodes: " + nodesUpdate);
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
 }
